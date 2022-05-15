@@ -1,6 +1,7 @@
 const path = require("path");
 const uWS = require("uWebSockets.js");
 const HTTPController = require(path.join(__dirname, "HTTPController.js"));
+const TemplateEngine = require(path.join(__dirname, "TemplateEngine.js"));
 
 const port = 5000;
 let serverToken = null;
@@ -12,6 +13,15 @@ process.on("SIGINT", () => {
   }
   console.log("Removing files...");
 });
+
+const Templates = new TemplateEngine();
+const HTTP = new HTTPController({
+  templateEngine: Templates
+});
+
+HTTP.addRoutes([
+
+]);
 
 uWS
   .App()
@@ -30,16 +40,7 @@ uWS
       let ok = ws.send(message, isBinary, true);
     },
   })
-  .get("/", HTTPController)
-  .get("/heapByType/:sessionId", HTTPController)
-  .get("/heapBySize/:sessionId", HTTPController)
-  .get("/heapEvents/:sessionId", HTTPController)
-  .get("/heapFragmentation/:sessionId", HTTPController)
-  .get("/executionContexts/:sessionId", HTTPController)
-  .get("/logMessages/:sessionId", HTTPController)
-  .get("/frames/:sessionId", HTTPController)
-  .get("/errors/:sessionId", HTTPController)
-  .get("/*", HTTPController)
+  .any(...HTTP.attach())
   .listen(port, (token) => {
     if (token) {
       console.log("Listening to port " + port);

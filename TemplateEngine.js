@@ -2,7 +2,7 @@ const path = require("path");
 const fs = require("fs");
 const Eta = require("eta");
 
-class Templates {
+class TemplateEngine {
   constructor(options = {}) {
     const defaults = {
       rootDir: __dirname,
@@ -74,4 +74,4 @@ class Templates {
   }
 }
 
-module.exports = Templates;
+module.exports = TemplateEngine;
