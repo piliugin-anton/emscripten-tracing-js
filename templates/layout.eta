@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title><% it.title %> &mdash; Trace Collector</title>
+    <link rel="shortcut icon" href="/static/favicon.ico" />
+
+    <!-- Bootstrap -->
+    <link
+      rel="stylesheet"
+      href="/static/bootstrap-3.3.7/css/bootstrap.min.css"
+    />
+    <link
+      rel="stylesheet"
+      href="/static/bootstrap-3.3.7/css/bootstrap-theme.min.css"
+    />
+
+    <link
+      rel="stylesheet"
+      href="//cdnjs.cloudflare.com/ajax/libs/c3/0.3.0/c3.min.css"
+    />
+
+    <link
+      rel="stylesheet"
+      href="/static/jquery-ui-1.13.1/jquery-ui.theme.min.css"
+    />
+    <link
+      rel="stylesheet"
+      href="/static/jquery-ui-plugins/jquery-ui-slider-pips.min.css"
+    />
+    <!--<link
+      rel="stylesheet"
+      href="/static/jquery-ui-bootstrap-4c408d9/assets/css/font-awesome.min.css"
+    />-->
+
+    <!-- Google Ajax loader -->
+    <script type="text/javascript" src="https://www.google.com/jsapi"></script>
+
+    <!-- jQuery (necessary for Bootstrap's JavaScript plugins) -->
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.11.1/jquery.min.js"></script>
+
+    <!-- Latest compiled and minified JavaScript -->
+    <script src="//maxcdn.bootstrapcdn.com/bootstrap/3.2.0/js/bootstrap.min.js"></script>
+
+    <script src="//cdnjs.cloudflare.com/ajax/libs/d3/3.4.11/d3.min.js"></script>
+    <script src="//cdnjs.cloudflare.com/ajax/libs/c3/0.3.0/c3.min.js"></script>
+    <script src="//cdnjs.cloudflare.com/ajax/libs/crossfilter/1.3.9/crossfilter.min.js"></script>
+
+    <link rel=stylesheet type=text/css href="/static/style.css">
+
+    <link
+      rel="stylesheet"
+      href="/static/slickgrid/slick.grid.css"
+      type="text/css"
+    />
+    <link
+      rel="stylesheet"
+      href="/static/slickgrid/slick-default-theme.css"
+      type="text/css"
+    />
+    <link
+      rel="stylesheet"
+      href="/static/slickgrid/controls/slick.pager.css"
+      type="text/css"
+    />
+    <script src="/static/jquery-ui-bootstrap-4c408d9/assets/js/vendor/jquery-ui-1.10.3.custom.min.js"></script>
+    <script src="/static/jquery-ui-plugins/jquery-ui-slider-pips.min.js"></script>
+    <script src="/static/slickgrid/lib/jquery.event.drag-2.2.js"></script>
+    <script src="/static/slickgrid/slick.core.js"></script>
+    <script src="/static/slickgrid/slick.grid.js"></script>
+    <script src="/static/slickgrid/slick.dataview.js"></script>
+    <script src="/static/slickgrid/controls/slick.pager.js"></script>
+    <script src="/static/slickgrid/plugins/slick.rowmovemanager.js"></script>
+    <script src="/static/slickgrid/plugins/slick.rowselectionmodel.js"></script>
+
+    <% it.extrahead %>
+  </head>
+  <body>
+    <div
+      id="navbar"
+      class="navbar navbar-inverse navbar-fixed-top"
+      role="navigation"
+    >
+      <div class="container-fluid">
+        <div class="navbar-header">
+          <a class="navbar-brand" href="/">Trace Collector</a>
+        </div>
+      </div>
+    </div>
+
+    <div class="container-fluid">
+      <div class="row">
+        <div class="col-sm-3 col-md-2 sidebar"><% it.navbar %></div>
+        <div class="col-sm-9 col-sm-offset-3 col-md-10 col-md-offset-2 main">
+          <h1 id="page-header" class="page-header">
+            <% it.pagetitle %>
+            <span class="small text-muted pull-right">
+              <% it.pagesubtitle %>
+            </span>
+          </h1>
+
+          <% it.body %>
+        </div>
+      </div>
+      <!-- row -->
+    </div>
+    <!-- container-fluid -->
+  </body>
+</html>

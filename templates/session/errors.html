@@ -1,0 +1,23 @@
+{% extends "session/layout.html" %}
+{% set active_page = "errors" %}
+{% block pagetitle %}Errors{% endblock %}
+{% block body %}
+<table class="table table-striped table-condensed">
+  <thead>
+    <th>Timestamp</th>
+    <th>Error Message</th>
+    <th>Callstack</th>
+  </thead>
+  <tbody>
+  {% for error in session.errors -%}
+    <tr>
+      <td>{{ error.timestamp|round(3) }}</td>
+      <td>{{ error.error }}</td>
+      <td><pre>{{ error.callstack }}</pre></td>
+    </tr>
+  {% else -%}
+    <tr><td colspan="3">No errors found.</td></tr>
+  {% endfor -%}
+  </tbody>
+</table>
+{% endblock %}

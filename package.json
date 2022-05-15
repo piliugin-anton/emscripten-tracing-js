@@ -1,0 +1,20 @@
+{
+  "name": "emscripten-tracing-js",
+  "version": "1.0.0",
+  "description": "Emscripten tracing JS",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [
+    "Emscripten"
+  ],
+  "author": "Anton Piliugin",
+  "license": "ISC",
+  "dependencies": {
+    "eta": "^1.12.3",
+    "mime": "^3.0.0",
+    "path-to-regexp": "^6.2.1",
+    "uWebSockets.js": "uNetworking/uWebSockets.js#v20.3.0"
+  }
+}
