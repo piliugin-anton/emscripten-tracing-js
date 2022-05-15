@@ -74,7 +74,6 @@ class HTTPController {
 
   handleRequest(res, req) {
     const route = req.getUrl();
-    // const pattern = req.getPattern();
 
     let routeFound = false;
     for (let i = 0; i < this.routesCount; i++) {
@@ -131,16 +130,30 @@ class HTTPController {
   writeHeaders(res, headers) {
     const headersLength = headers.length;
     for (let i = 0; i < headersLength; i++) {
-      const { header, value } = headers[i];
-      res.writeHeader(header, value);
+      const header = headers[i];
+
+      if (header.length !== 2) {
+        continue;
+      }
+
+      res.writeHeader(header[0], header[1]);
     }
   }
 
   onAbortedOrFinishedStream(res, readStream, promise) {
     if (res.id !== -1) {
       readStream.destroy();
+      promise();
     }
-    promise();
+    res.id = -1;
+  }
+
+  /* Helper function converting Node.js buffer to ArrayBuffer */
+  toArrayBuffer(buffer) {
+    return buffer.buffer.slice(
+      buffer.byteOffset,
+      buffer.byteOffset + buffer.byteLength
+    );
   }
 
   streamFile(req, res, file, stat) {
@@ -150,19 +163,19 @@ class HTTPController {
       const { mtime } = stat;
       let { size } = stat;
       const headers = [];
-  
+
       if (ifModifiedSince && new Date(ifModifiedSince) >= mtime) {
         // TODO: test it
-        return resolve("304 Not Modified");
+        return resolve(HTTPController.STATUS_CODES[304]);
       }
-  
+
       mtime.setMilliseconds(0);
       const mtimeutc = mtime.toUTCString();
-      headers.push({ header: "Last-Modified", value: mtimeutc });
-  
+      headers.push(["Last-Modified", mtimeutc]);
+
       const mimeType = mime.getType(file) || "application/octet-stream";
-      headers.push({ header: "Content-Type", value: mimeType });
-  
+      headers.push(["Content-Type", mimeType]);
+
       let start = 0;
       let end = size;
       if (range) {
@@ -177,63 +190,71 @@ class HTTPController {
             end = endNumber;
           }
         }
-        headers.push({ header: "Accept-Ranges", value: "bytes" });
-        headers.push({
-          header: "Content-Range",
-          value: `bytes ${start}-${end}/${size}`,
-        });
+
+        headers.push(["Accept-Ranges", "bytes"]);
+        headers.push(["Content-Range", `bytes ${start}-${end}/${size}`]);
         // TODO: test it
-        res.writeStatus("206 Partial Content");
+        res.writeStatus(HTTPController.STATUS_CODES[206]);
         size = end - start;
       }
-  
+
       this.writeHeaders(res, headers);
-  
+
       const readStream = fs.createReadStream(file, {
         start,
         end,
       });
-  
-      res.onAborted(() => {
-        this.onAbortedOrFinishedStream(res, readStream, () => resolve(null));
-      });
-  
+
+      res.onAborted(() =>
+        this.onAbortedOrFinishedStream(res, readStream, () => resolve(null))
+      );
+
       readStream.on("error", (err) => {
         console.log("readStream error", err);
         this.onAbortedOrFinishedStream(res, readStream, () => reject(err));
       });
-  
+
       readStream.on("data", (buffer) => {
-        const chunk = buffer.buffer.slice(
-          buffer.byteOffset,
-          buffer.byteOffset + buffer.byteLength
-        );
+        /* We only take standard V8 units of data */
+        const chunk = this.toArrayBuffer(buffer);
+
+        /* Store where we are, globally, in our response */
         const lastOffset = res.getWriteOffset();
-  
-        // First try
+
+        /* Streaming a chunk returns whether that chunk was sent, and if that chunk was last */
         const [ok, done] = res.tryEnd(chunk, size);
-  
+
+        /* Did we successfully send last chunk? */
         if (done) {
           this.onAbortedOrFinishedStream(res, readStream, () => resolve(true));
         } else if (!ok) {
-          // pause because backpressure
+          /* If we could not send this chunk (backpressure), pause */
           readStream.pause();
-  
-          // Save unsent chunk for later
+
+          /* Save unsent chunk for when we can send it */
           res.ab = chunk;
           res.abOffset = lastOffset;
-  
-          // Register async handlers for drainage
+
+          /* Register async handlers for drainage */
           res.onWritable((offset) => {
+            /* Here the timeout is off, we can spend as much time before calling tryEnd we want to */
+
+            /* On failure the timeout will start */
             const [ok, done] = res.tryEnd(
               res.ab.slice(offset - res.abOffset),
               size
             );
+
             if (done) {
-              this.onAbortedOrFinishedStream(res, readStream, () => resolve(true));
+              this.onAbortedOrFinishedStream(res, readStream, () =>
+                resolve(true)
+              );
             } else if (ok) {
               readStream.resume();
             }
+
+            /* We always have to return true/false in onWritable.
+             * If you did not send anything, return true for success. */
             return ok;
           });
         }
@@ -251,6 +272,8 @@ class HTTPController {
   static get STATUS_CODES() {
     return {
       200: "200 OK",
+      206: "206 Partial Content",
+      304: "304 Not Modified",
       403: "403 Forbidden",
       404: "404 Not Found",
       500: "500 Internal Server Error",
