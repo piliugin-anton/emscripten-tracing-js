@@ -179,7 +179,7 @@ class HTTPController {
         return params || null;
       },
       get query() {
-        return query || null;
+        return query ? new URLSearchParams(query) : new URLSearchParams();
       },
     };
   }

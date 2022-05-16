@@ -20,10 +20,10 @@ const HTTP = new HTTPController({
 // TODO: Test if method name is compared as it should
 HTTP.addRoutes([
   {
-    pattern: "/",
+    pattern: "/:foo",
     method: HTTPController.METHODS.GET,
     template: "index.eta",
-    handler: (data) => { console.log("data", data); }
+    handler: (data) => { console.log("query params", data.query, data.params); }
   }
 ]);
 
