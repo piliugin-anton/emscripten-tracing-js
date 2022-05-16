@@ -22,6 +22,8 @@ class HTTPController {
     this.routesCount = 0;
 
     autoBind(this);
+
+    return this;
   }
 
   hasRoute(pattern) {
@@ -31,7 +33,7 @@ class HTTPController {
   addRoute(route = {}) {
     if (
       typeof route.pattern !== "string" ||
-      (route.static && typeof route.template !== "string")
+      (!route.static && typeof route.template !== "string")
     ) {
       throw new Error(
         "Route must have a pattern. Non-static route must have a template."
@@ -43,7 +45,7 @@ class HTTPController {
     }
 
     if (!route.static && typeof route.method !== "string") {
-      route.method = "any";
+      route.method = HTTPController.METHODS.ANY;
     }
 
     if (this.hasRoute(route.pattern)) {
@@ -55,11 +57,13 @@ class HTTPController {
     });
 
     if (route.static && !route.dir) {
-      route.dir = __dirname;
+      route.dir = path.join(__dirname, "static");
     }
 
     this.routes.push(route);
     this.routesCount++;
+
+    return this;
   }
 
   addRoutes(routes = []) {
@@ -71,6 +75,8 @@ class HTTPController {
     for (let i = 0; i < routesLength; i++) {
       this.addRoute(routes[i]);
     }
+
+    return this;
   }
 
   attach() {
@@ -126,23 +132,25 @@ class HTTPController {
 
     // Static route
     if (req.__ROUTE.static) {
-      const filePath = route.split("/").join(path.sep);
+      const filePath = req.__URL.split("/").join(path.sep);
       const absoluteFilePath = path.join(req.__ROUTE.dir, filePath);
 
       // File not found
       if (!fs.existsSync(absoluteFilePath))
-        return this.handleError(404, res, requestObject);
+        return this.handleError(404, res, requestObject, true);
 
       const stat = fs.statSync(absoluteFilePath);
       // Damn! It's not a file (it's a directory)
-      if (!stat.isFile()) return this.handleError(404, res, requestObject);
+      if (!stat.isFile())
+        return this.handleError(404, res, requestObject, true);
 
       // Stream a file
       // TODO: Bundle CSS + JS
       return this.streamFile(req, res, absoluteFilePath, stat)
-        .then((status) => {
-          if (typeof status === "string") return res.writeStatus(status).end();
-        })
+        .then(
+          (status) =>
+            typeof status === "string" && res.writeStatus(status).end()
+        )
         .catch((err) => {
           console.log("fileStream exception", err);
           return res.end();
@@ -176,7 +184,7 @@ class HTTPController {
       url,
       method,
       get params() {
-        return params || null;
+        return params || {};
       },
       get query() {
         return query ? new URLSearchParams(query) : new URLSearchParams();
@@ -191,10 +199,10 @@ class HTTPController {
       .end(HTML);
   }
 
-  handleError(code, res, requestObject) {
+  handleError(code, res, requestObject, isStatic) {
     let HTML = null;
 
-    if (this.errorHandler) {
+    if (this.errorHandler && !isStatic) {
       const { template, data } = this.errorHandler(requestObject);
       HTML = this.template.render(template, data || {});
     }
@@ -334,12 +342,18 @@ class HTTPController {
     return {
       GET: "get",
       POST: "post",
+      ANY: "any",
       OPTIONS: "options",
     };
   }
 
   static get OPTIONS_HEADER() {
-    return ["Allow", Object.keys(HTTPController.METHODS).join(", ")];
+    return [
+      "Allow",
+      Object.keys(HTTPController.METHODS)
+        .filter((m) => m !== "ANY")
+        .join(", "),
+    ];
   }
 
   static get STATUS_CODES() {

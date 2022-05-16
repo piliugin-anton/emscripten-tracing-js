@@ -1,4 +1,4 @@
-<% layout('./layout.eta', {title: "Sessions"}) %>
+<% layout('./layout.eta', { it.title: "Sessions"}) %>
 <table id="sessions" class="table table-striped table-condensed">
   <thead>
     <th>Session ID</th>

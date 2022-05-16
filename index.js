@@ -1,3 +1,4 @@
+const path = require("path");
 const uWS = require("uWebSockets.js");
 const HTTPController = require("./HTTPController.js");
 const TemplateEngine = require("./TemplateEngine.js");
@@ -15,16 +16,28 @@ process.on("SIGINT", () => {
 
 const Templates = new TemplateEngine();
 const HTTP = new HTTPController({
-  templateEngine: Templates
-});
-// TODO: Test if method name is compared as it should
-HTTP.addRoutes([
+  templateEngine: Templates,
+  errorHandler: (request) => {
+    const { url, method, params, query } = request;
+    //console.log("Error!");
+    //console.log(url, method, params, query);
+    return { template: "errors.eta", data: {} };
+  },
+}).addRoutes([
   {
-    pattern: "/:foo",
+    pattern: "/",
     method: HTTPController.METHODS.GET,
     template: "index.eta",
-    handler: (data) => { console.log("query params", data.query, data.params); }
-  }
+    handler: (request) => {
+      return {};
+    },
+  },
+  {
+    pattern: "/static/(.+)",
+    method: HTTPController.METHODS.GET,
+    dir: __dirname,
+    static: true,
+  },
 ]);
 
 uWS
