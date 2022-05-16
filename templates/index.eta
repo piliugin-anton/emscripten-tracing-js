@@ -15,7 +15,7 @@
         <td><a href="/session/<%= session.sessionID %>/"><%= session.name %></a></td>
         <td><%= session.application %></td>
         <td><%= session.username %></td>
-        <td data-order="{{ session.peak_allocated }}"><%= session.peak_allocated|filesizeformat %></td>
+        <td data-order="<%= session.peak_allocated %>"><%= session.peak_allocated|filesizeformat %></td>
           <% if (session.errors.length > 0) { %>
             <td class="danger"><%= session.errors.length %></td>
           <% } else { %>
