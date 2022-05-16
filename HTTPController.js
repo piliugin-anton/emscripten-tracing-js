@@ -197,14 +197,14 @@ class HTTPController {
     if (this.errorHandler) {
       const { template, data } = this.errorHandler(requestObject);
       HTML = this.template.render(template, data || {});
-    } else {
-      HTML = HTTPController.STATUS_CODES[code];
     }
 
+    if (!HTML) HTML = HTTPController.STATUS_CODES[code];
+
     return res
-        .writeStatus(HTTPController.STATUS_CODES[code])
-        .writeHeader("Content-Type", "text/html")
-        .end(HTML);
+      .writeStatus(HTTPController.STATUS_CODES[code])
+      .writeHeader("Content-Type", "text/html")
+      .end(HTML);
   }
 
   onAbortedOrFinishedStream(res, readStream, promise) {
@@ -226,15 +226,14 @@ class HTTPController {
   streamFile(req, res, file, stat) {
     return new Promise((resolve, reject) => {
       const ifModifiedSince = req.getHeader("if-modified-since");
-      let range = req.getHeader("range");
-      const { mtime } = stat;
-      let { size } = stat;
-      const headers = [];
 
       if (ifModifiedSince && new Date(ifModifiedSince) >= mtime) {
         // TODO: test it
         return resolve(HTTPController.STATUS_CODES[304]);
       }
+
+      const { mtime } = stat;
+      const headers = [];
 
       mtime.setMilliseconds(0);
       const mtimeutc = mtime.toUTCString();
@@ -243,6 +242,8 @@ class HTTPController {
       const mimeType = mime.getType(file) || "application/octet-stream";
       headers.push(["Content-Type", mimeType]);
 
+      const range = req.getHeader("range");
+      let { size } = stat;
       let start = 0;
       let end = size;
       if (range) {
