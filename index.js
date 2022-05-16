@@ -17,11 +17,18 @@ process.on("SIGINT", () => {
 const Templates = new TemplateEngine();
 const HTTP = new HTTPController({
   templateEngine: Templates,
-  errorHandler: (request) => {
-    const { url, method, params, query } = request;
-    //console.log("Error!");
-    //console.log(url, method, params, query);
-    return { template: "errors.eta", data: {} };
+  errorHandler: (request, code) => {
+    // const { url, method, params, query } = request;
+    const errorMessages = {
+      403: "You tried to access a page you did not have prior authorization for.",
+      404: "The page that you requested could not be found.",
+      500: "It's always time for a tea break."
+    };
+
+    return {
+      template: "errors.eta",
+      data: { code, pageTitle: HTTPController.STATUS_CODES[code], message: errorMessages[code] || "" },
+    };
   },
 }).addRoutes([
   {
@@ -29,7 +36,7 @@ const HTTP = new HTTPController({
     method: HTTPController.METHODS.GET,
     template: "index.eta",
     handler: (request) => {
-      return {};
+      return { title: "Sessions", pageTitle: "Sessions"/*, sessions: []*/ };
     },
   },
   {

@@ -4,7 +4,7 @@
     <meta charset="utf-8" />
     <meta http-equiv="X-UA-Compatible" content="IE=edge" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title><% it.title %> &mdash; Trace Collector</title>
+    <title><%= it.title %> &mdash; Trace Collector</title>
     <link rel="shortcut icon" href="/static/favicon.ico" />
 
     <!-- Bootstrap -->
@@ -75,7 +75,7 @@
     <script src="/static/slickgrid/plugins/slick.rowmovemanager.js"></script>
     <script src="/static/slickgrid/plugins/slick.rowselectionmodel.js"></script>
 
-    <% it.extrahead %>
+    <%~ it.extrahead || "" %>
   </head>
   <body>
     <div
@@ -92,16 +92,16 @@
 
     <div class="container-fluid">
       <div class="row">
-        <div class="col-sm-3 col-md-2 sidebar"><% it.navbar %></div>
+        <div class="col-sm-3 col-md-2 sidebar"><%~ it.navbar || "" %></div>
         <div class="col-sm-9 col-sm-offset-3 col-md-10 col-md-offset-2 main">
           <h1 id="page-header" class="page-header">
-            <% it.pagetitle %>
+            <%= it.pagetitle %>
             <span class="small text-muted pull-right">
-              <% it.pagesubtitle %>
+              <%= it.pagesubtitle || "" %>
             </span>
           </h1>
 
-          <% it.body %>
+          <%~ it.body %>
         </div>
       </div>
       <!-- row -->

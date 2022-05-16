@@ -203,7 +203,7 @@ class HTTPController {
     let HTML = null;
 
     if (this.errorHandler && !isStatic) {
-      const { template, data } = this.errorHandler(requestObject);
+      const { template, data } = this.errorHandler(requestObject, code);
       HTML = this.template.render(template, data || {});
     }
 
