@@ -2,9 +2,7 @@ const path = require("path");
 const fs = require("fs");
 const mime = require("mime");
 const { match } = require("path-to-regexp");
-const { autoBind } = require(path.join(__dirname, "utils.js"));
-
-const printObject = (object) => console.log(JSON.stringify(object, null, 2));
+const { autoBind } = require("./utils.js");
 
 class HTTPController {
   constructor(options = {}) {
@@ -17,6 +15,8 @@ class HTTPController {
       );
     }
 
+    this.errorHandler =
+      typeof options.errorHandler === "function" ? options.errorHandler : null;
     this.template = options.templateEngine;
     this.routes = [];
     this.routesCount = 0;
@@ -85,38 +85,57 @@ class HTTPController {
   }
 
   handleRequest(res, req) {
-    const method = req.getMethod();
+    // Request method
+    req.__METHOD = req.getMethod();
 
     // OPTIONS request
-    if (method === HTTPController.METHODS.OPTIONS) {
+    if (req.__METHOD === HTTPController.METHODS.OPTIONS) {
       return this.handleOptionsRequest(res);
     }
 
-    const route = req.getUrl();
+    // Request URL
+    req.__URL = req.getUrl();
+    // Request query
+    req.__QUERY = req.getQuery();
 
+    // Trying to find a route
     for (let i = 0; i < this.routesCount; i++) {
-      const matched = this.routes[i].match(route);
-      if (matched) {
-        req.__URL = route;
+      const match = this.routes[i].match(req.__URL);
+      if (
+        match &&
+        (this.routes[i].method === req.__METHOD ||
+          this.routes[i].method === "any")
+      ) {
+        //console.log("matched params", matched.params)
         req.__ROUTE = this.routes[i];
-        req.__PARAMS = matched.params;
+        req.__PARAMS = { ...match.params };
         break;
       }
     }
 
-    if (!req.__ROUTE) return handleError(404, res, req);
+    // Generate request object
+    const requestObject = this.generateRequestObject(
+      req.__URL,
+      req.__METHOD,
+      req.__QUERY,
+      req.__PARAMS
+    );
 
+    // Route not found
+    if (!req.__ROUTE) return this.handleError(404, res, requestObject);
+
+    // Static route
     if (req.__ROUTE.static) {
       const filePath = route.split("/").join(path.sep);
       const absoluteFilePath = path.join(req.__ROUTE.dir, filePath);
 
       // File not found
       if (!fs.existsSync(absoluteFilePath))
-        return handleError(404, res, req);
+        return this.handleError(404, res, requestObject);
 
       const stat = fs.statSync(absoluteFilePath);
       // Damn! It's not a file (it's a directory)
-      if (!stat.isFile()) return handleError(404, res, req);
+      if (!stat.isFile()) return this.handleError(404, res, requestObject);
 
       // Stream a file
       // TODO: Bundle CSS + JS
@@ -131,21 +150,38 @@ class HTTPController {
     }
 
     // Non-static route
-    // Page (HTML)
-    const HTML = Templates.render(view.template, {});
+
+    // Get data from route handler
+    const data = req.__ROUTE.handler(requestObject);
+
+    // Render template (HTML)
+    const HTML = this.template.render(req.__ROUTE.template, data || {});
 
     // Cannot render HTML, return 500
-    if (!HTML.length) return handleError(500, res, req);
+    if (!HTML) return this.handleError(500, res, requestObject);
 
     // Woohoo! Return HTML
-    return this.render(HTML);
+    return this.handleResponse(res, HTML);
   }
 
   handleOptionsRequest(res) {
-    res
+    return res
       .writeStatus(HTTPController.STATUS_CODES[200])
       .writeHeader(...HTTPController.OPTIONS_HEADER)
       .end();
+  }
+
+  generateRequestObject(url, method, query, params) {
+    return {
+      url,
+      method,
+      get params() {
+        return params || null;
+      },
+      get query() {
+        return query || null;
+      },
+    };
   }
 
   handleResponse(res, HTML) {
@@ -155,8 +191,20 @@ class HTTPController {
       .end(HTML);
   }
 
-  handleError(code, res, req) {
-    //
+  handleError(code, res, requestObject) {
+    let HTML = null;
+
+    if (this.errorHandler) {
+      const { template, data } = this.errorHandler(requestObject);
+      HTML = this.template.render(template, data || {});
+    } else {
+      HTML = HTTPController.STATUS_CODES[code];
+    }
+
+    return res
+        .writeStatus(HTTPController.STATUS_CODES[code])
+        .writeHeader("Content-Type", "text/html")
+        .end(HTML);
   }
 
   onAbortedOrFinishedStream(res, readStream, promise) {

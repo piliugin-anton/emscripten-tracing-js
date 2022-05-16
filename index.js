@@ -1,7 +1,6 @@
-const path = require("path");
 const uWS = require("uWebSockets.js");
-const HTTPController = require(path.join(__dirname, "HTTPController.js"));
-const TemplateEngine = require(path.join(__dirname, "TemplateEngine.js"));
+const HTTPController = require("./HTTPController.js");
+const TemplateEngine = require("./TemplateEngine.js");
 
 const port = 5000;
 let serverToken = null;
@@ -18,10 +17,11 @@ const Templates = new TemplateEngine();
 const HTTP = new HTTPController({
   templateEngine: Templates
 });
-
+// TODO: Test if method name is compared as it should
 HTTP.addRoutes([
   {
     pattern: "/",
+    method: HTTPController.METHODS.GET,
     template: "index.eta",
     handler: (data) => { console.log("data", data); }
   }

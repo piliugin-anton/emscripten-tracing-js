@@ -44,4 +44,7 @@ const autoBind = (self, { include, exclude } = {}) => {
   return self;
 };
 
+const printObject = (object) => console.log(JSON.stringify(object, null, 2));
+
 module.exports.autoBind = autoBind;
+module.exports.printObject = printObject;
