@@ -1,7 +1,8 @@
 const path = require("path");
 const fs = require("fs");
 const mime = require("mime");
-const { pathToRegexp } = require("path-to-regexp");
+const { match } = require("path-to-regexp");
+const { autoBind } = require(path.join(__dirname, "utils.js"));
 
 const printObject = (object) => console.log(JSON.stringify(object, null, 2));
 
@@ -19,6 +20,8 @@ class HTTPController {
     this.template = options.templateEngine;
     this.routes = [];
     this.routesCount = 0;
+
+    autoBind(this);
   }
 
   hasRoute(pattern) {
@@ -40,14 +43,16 @@ class HTTPController {
     }
 
     if (!route.static && typeof route.method !== "string") {
-      throw new Error("Non-static routes must have a method (GET, POST, etc.)");
+      route.method = "any";
     }
 
     if (this.hasRoute(route.pattern)) {
       throw new Error(`Route with pattern ${route.pattern} already exists!`);
     }
 
-    route.regexp = pathToRegexp(route.pattern);
+    route.match = match(route.pattern, {
+      decode: decodeURIComponent,
+    });
 
     if (route.static && !route.dir) {
       route.dir = __dirname;
@@ -72,30 +77,46 @@ class HTTPController {
     return ["/*", this.handleRequest];
   }
 
+  writeHeaders(res, headers) {
+    const headersLength = headers.length;
+    for (let i = 0; i < headersLength; i++) {
+      res.writeHeader(...headers[i]);
+    }
+  }
+
   handleRequest(res, req) {
+    const method = req.getMethod();
+
+    // OPTIONS request
+    if (method === HTTPController.METHODS.OPTIONS) {
+      return this.handleOptionsRequest(res);
+    }
+
     const route = req.getUrl();
 
-    let routeFound = false;
     for (let i = 0; i < this.routesCount; i++) {
-      if (this.routes[i].regexp.exec(route)) {
-        routeFound = this.routes[i];
+      const matched = this.routes[i].match(route);
+      if (matched) {
+        req.__URL = route;
+        req.__ROUTE = this.routes[i];
+        req.__PARAMS = matched.params;
         break;
       }
     }
 
-    if (!routeFound) return handleError(404, res, req);
+    if (!req.__ROUTE) return handleError(404, res, req);
 
-    if (routeFound.static) {
+    if (req.__ROUTE.static) {
       const filePath = route.split("/").join(path.sep);
-      const absoluteFilePath = path.join(routeFound.dir, filePath);
+      const absoluteFilePath = path.join(req.__ROUTE.dir, filePath);
 
       // File not found
       if (!fs.existsSync(absoluteFilePath))
-        return handleError(404, res, req, route);
+        return handleError(404, res, req);
 
       const stat = fs.statSync(absoluteFilePath);
       // Damn! It's not a file (it's a directory)
-      if (!stat.isFile()) return handleError(404, res, req, route);
+      if (!stat.isFile()) return handleError(404, res, req);
 
       // Stream a file
       // TODO: Bundle CSS + JS
@@ -109,15 +130,22 @@ class HTTPController {
         });
     }
 
-    // Non-static route (dynamic)
+    // Non-static route
     // Page (HTML)
     const HTML = Templates.render(view.template, {});
 
     // Cannot render HTML, return 500
-    if (!HTML.length) return handleError(500, res, req, route);
+    if (!HTML.length) return handleError(500, res, req);
 
     // Woohoo! Return HTML
     return this.render(HTML);
+  }
+
+  handleOptionsRequest(res) {
+    res
+      .writeStatus(HTTPController.STATUS_CODES[200])
+      .writeHeader(...HTTPController.OPTIONS_HEADER)
+      .end();
   }
 
   handleResponse(res, HTML) {
@@ -127,17 +155,8 @@ class HTTPController {
       .end(HTML);
   }
 
-  writeHeaders(res, headers) {
-    const headersLength = headers.length;
-    for (let i = 0; i < headersLength; i++) {
-      const header = headers[i];
-
-      if (header.length !== 2) {
-        continue;
-      }
-
-      res.writeHeader(header[0], header[1]);
-    }
+  handleError(code, res, req) {
+    //
   }
 
   onAbortedOrFinishedStream(res, readStream, promise) {
@@ -262,11 +281,16 @@ class HTTPController {
     });
   }
 
-  static get REQUEST_METHOD() {
+  static get METHODS() {
     return {
-      GET: "GET",
-      POST: "POST",
+      GET: "get",
+      POST: "post",
+      OPTIONS: "options",
     };
+  }
+
+  static get OPTIONS_HEADER() {
+    return ["Allow", Object.keys(HTTPController.METHODS).join(", ")];
   }
 
   static get STATUS_CODES() {

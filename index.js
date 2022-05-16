@@ -20,7 +20,11 @@ const HTTP = new HTTPController({
 });
 
 HTTP.addRoutes([
-
+  {
+    pattern: "/",
+    template: "index.eta",
+    handler: (data) => { console.log("data", data); }
+  }
 ]);
 
 uWS
