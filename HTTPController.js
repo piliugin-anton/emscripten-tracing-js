@@ -112,7 +112,6 @@ class HTTPController {
         (req.__METHOD === HTTPController.METHODS.HEAD || this.routes[i].method === req.__METHOD ||
           this.routes[i].method === HTTPController.METHODS.ANY)
       ) {
-        //console.log("matched params", matched.params)
         req.__ROUTE = this.routes[i];
         req.__PARAMS = { ...match.params };
         break;
@@ -184,14 +183,14 @@ class HTTPController {
 
   handleOptionsRequest(res) {
     return res
-      .writeStatus(HTTPController.STATUS_CODES[200])
+      .writeStatus(HTTPController.STATUSES[200])
       .writeHeader(...HTTPController.OPTIONS_HEADER)
       .end();
   }
 
   handleHeadRequest(res, size, mimeType) {
     return res
-      .writeStatus(HTTPController.STATUS_CODES[200])
+      .writeStatus(HTTPController.STATUSES[200])
       .writeHeader("Content-Type", mimeType)
       .writeHeader("Content-Length", size)
       .endWithoutBody();
@@ -225,10 +224,10 @@ class HTTPController {
       HTML = this.template.render(template, data || {});
     }
 
-    if (!HTML) HTML = HTTPController.STATUS_CODES[code];
+    if (!HTML) HTML = HTTPController.STATUSES[code];
 
     return res
-      .writeStatus(HTTPController.STATUS_CODES[code])
+      .writeStatus(HTTPController.STATUSES[code])
       .writeHeader("Content-Type", "text/html")
       .end(HTML);
   }
@@ -256,7 +255,7 @@ class HTTPController {
 
       if (ifModifiedSince && new Date(ifModifiedSince) >= mtime) {
         // TODO: test it
-        return resolve(HTTPController.STATUS_CODES[304]);
+        return resolve(HTTPController.STATUSES[304]);
       }
 
       const headers = [];
@@ -285,7 +284,7 @@ class HTTPController {
         headers.push(["Accept-Ranges", "bytes"]);
         headers.push(["Content-Range", `bytes ${start}-${end}/${size}`]);
         // TODO: test it
-        res.writeStatus(HTTPController.STATUS_CODES[206]);
+        res.writeStatus(HTTPController.STATUSES[206]);
         size = end - start;
       }
 
@@ -372,7 +371,7 @@ class HTTPController {
     ];
   }
 
-  static get STATUS_CODES() {
+  static get STATUSES() {
     return {
       200: "200 OK",
       206: "206 Partial Content",
