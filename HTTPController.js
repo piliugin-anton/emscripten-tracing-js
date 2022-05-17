@@ -15,6 +15,11 @@ class HTTPController {
       );
     }
 
+    if (options.hasOwnProperty("cors") && typeof options.cors !== "string") {
+      throw new Error("CORS must be a string type, ex: '*'");
+    }
+
+    this.cors = options.cors;
     this.errorHandler =
       typeof options.errorHandler === "function" ? options.errorHandler : null;
     this.template = options.templateEngine;
@@ -33,19 +38,23 @@ class HTTPController {
   addRoute(route = {}) {
     if (
       typeof route.pattern !== "string" ||
-      (!route.static && typeof route.template !== "string")
+      (!route.static && !route.redirect && typeof route.template !== "string")
     ) {
       throw new Error(
         "Route must have a pattern. Non-static route must have a template."
       );
     }
 
-    if (!route.static && typeof route.handler !== "function") {
+    if (!route.static && !route.redirect && typeof route.handler !== "function") {
       throw new Error("Non-static routes must have a handler.");
     }
 
     if (!route.static && typeof route.method !== "string") {
       route.method = HTTPController.METHODS.ANY;
+    }
+
+    if (route.hasOwnProperty("cors") && typeof route.cors !== "string") {
+      throw new Error("CORS must be a string type, ex: '*'");
     }
 
     if (this.hasRoute(route.pattern)) {
@@ -57,7 +66,7 @@ class HTTPController {
     });
 
     if (route.static && !route.dir) {
-      route.dir = path.join(__dirname, "static");
+      route.dir = __dirname;
     }
 
     this.routes.push(route);
@@ -109,7 +118,8 @@ class HTTPController {
       const match = this.routes[i].match(req.__URL);
       if (
         match &&
-        (req.__METHOD === HTTPController.METHODS.HEAD || this.routes[i].method === req.__METHOD ||
+        (req.__METHOD === HTTPController.METHODS.HEAD ||
+          this.routes[i].method === req.__METHOD ||
           this.routes[i].method === HTTPController.METHODS.ANY)
       ) {
         req.__ROUTE = this.routes[i];
@@ -129,6 +139,15 @@ class HTTPController {
     // Route not found
     if (!req.__ROUTE) return this.handleError(404, res, requestObject);
 
+    // CORS
+    const cors = req.__ROUTE.cors || this.cors;
+    if (cors) {
+      res.writeHeader("Access-Control-Allow-Origin", cors);
+    }
+
+    // Handle redirect (301)
+    if (req.__ROUTE.redirect) return this.handleRedirect(res, req.__ROUTE.redirect, req.__ROUTE.cors);
+
     // Static route
     if (req.__ROUTE.static) {
       const filePath = req.__URL.split("/").join(path.sep);
@@ -143,10 +162,12 @@ class HTTPController {
       if (!stat.isFile())
         return this.handleError(404, res, requestObject, true);
 
-      const mimeType = mime.getType(absoluteFilePath) || "application/octet-stream";
+      const mimeType =
+        mime.getType(absoluteFilePath) || "application/octet-stream";
 
       // Head request
-      if (req.__METHOD === HTTPController.METHODS.HEAD) return this.handleHeadRequest(res, stat.size.toString(), mimeType);
+      if (req.__METHOD === HTTPController.METHODS.HEAD)
+        return this.handleHeadRequest(res, stat.size.toString(), mimeType);
 
       // Sending mime type
       res.writeHeader("Content-Type", mimeType);
@@ -155,7 +176,8 @@ class HTTPController {
       return this.streamFile(req, res, absoluteFilePath, stat)
         .then(
           (status) =>
-            typeof status === "string" && res.writeStatus(status).endWithoutBody()
+            typeof status === "string" &&
+            res.writeStatus(status).endWithoutBody()
         )
         .catch((err) => {
           console.log("streamFile() exception", err);
@@ -175,8 +197,13 @@ class HTTPController {
     if (!HTML) return this.handleError(500, res, requestObject);
 
     // Head request
-    if (req.__METHOD === HTTPController.METHODS.HEAD) return this.handleHeadRequest(res, Buffer.byteLength(HTML).toString(), "text/html");
-    
+    if (req.__METHOD === HTTPController.METHODS.HEAD)
+      return this.handleHeadRequest(
+        res,
+        Buffer.byteLength(HTML).toString(),
+        "text/html"
+      );
+
     // Woohoo! Return HTML
     return this.handleResponse(res, HTML);
   }
@@ -193,6 +220,13 @@ class HTTPController {
       .writeStatus(HTTPController.STATUSES[200])
       .writeHeader("Content-Type", mimeType)
       .writeHeader("Content-Length", size)
+      .endWithoutBody();
+  }
+
+  handleRedirect(res, redirect) {
+    return res
+      .writeStatus(HTTPController.STATUSES[301])
+      .writeHeader("Location", redirect)
       .endWithoutBody();
   }
 
@@ -336,9 +370,7 @@ class HTTPController {
             );
 
             if (done) {
-              this.onAbortedOrFinishedStream(res, readStream, () =>
-                resolve()
-              );
+              this.onAbortedOrFinishedStream(res, readStream, () => resolve());
             } else if (ok) {
               readStream.resume();
             }
@@ -375,6 +407,7 @@ class HTTPController {
     return {
       200: "200 OK",
       206: "206 Partial Content",
+      301: "Moved Permanently",
       304: "304 Not Modified",
       403: "403 Forbidden",
       404: "404 Not Found",

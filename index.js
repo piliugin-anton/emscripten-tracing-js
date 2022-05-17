@@ -26,7 +26,7 @@ const HTTP = new HTTPController({
     // TODO: test it
     return {
       template: "errors.eta",
-      data: { code, pageTitle: HTTPController.STATUS_CODES[code], message: errorMessages[code] },
+      data: { code, pageTitle: HTTPController.STATUSES[code], message: errorMessages[code] },
     };
   },
 }).addRoutes([
@@ -37,6 +37,12 @@ const HTTP = new HTTPController({
     handler: (request) => {
       return { title: "Sessions", pageTitle: "Sessions"/*, sessions: []*/ };
     },
+  },
+  {
+    pattern: "/worker.js",
+    method: HTTPController.METHODS.GET,
+    redirect: "/static/worker.js",
+    cors: true
   },
   {
     pattern: "/static/(.+)",
