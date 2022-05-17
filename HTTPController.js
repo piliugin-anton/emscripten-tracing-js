@@ -45,7 +45,11 @@ class HTTPController {
       );
     }
 
-    if (!route.static && !route.redirect && typeof route.handler !== "function") {
+    if (
+      !route.static &&
+      !route.redirect &&
+      typeof route.handler !== "function"
+    ) {
       throw new Error("Non-static routes must have a handler.");
     }
 
@@ -71,6 +75,24 @@ class HTTPController {
 
     this.routes.push(route);
     this.routesCount++;
+
+    if (route.redirect) {
+      const newRedirectRoute = {
+        pattern: route.redirect,
+        method: route.method,
+        static: route.static,
+      };
+
+      if (route.static) {
+        newRedirectRoute.dir = route.dir;
+      }
+
+      if (typeof route.cors === "string") {
+        newRedirectRoute.cors = route.cors;
+      }
+
+      this.addRoute(newRedirectRoute);
+    }
 
     return this;
   }
@@ -141,12 +163,10 @@ class HTTPController {
 
     // CORS
     const cors = req.__ROUTE.cors || this.cors;
-    if (cors) {
-      res.writeHeader("Access-Control-Allow-Origin", cors);
-    }
 
     // Handle redirect (301)
-    if (req.__ROUTE.redirect) return this.handleRedirect(res, req.__ROUTE.redirect, req.__ROUTE.cors);
+    if (req.__ROUTE.redirect)
+      return this.handleRedirect(res, req.__ROUTE.redirect, cors);
 
     // Static route
     if (req.__ROUTE.static) {
@@ -155,25 +175,28 @@ class HTTPController {
 
       // File not found
       if (!fs.existsSync(absoluteFilePath))
-        return this.handleError(404, res, requestObject, true);
+        return this.handleError(404, res, requestObject, cors, true);
 
       const stat = fs.statSync(absoluteFilePath);
       // Damn! It's not a file (it's a directory)
       if (!stat.isFile())
-        return this.handleError(404, res, requestObject, true);
+        return this.handleError(404, res, requestObject, cors, true);
 
       const mimeType =
         mime.getType(absoluteFilePath) || "application/octet-stream";
 
       // Head request
       if (req.__METHOD === HTTPController.METHODS.HEAD)
-        return this.handleHeadRequest(res, stat.size.toString(), mimeType);
+        return this.handleHeadRequest(
+          res,
+          stat.size.toString(),
+          mimeType,
+          cors
+        );
 
-      // Sending mime type
-      res.writeHeader("Content-Type", mimeType);
       // Stream a file
       // TODO: Bundle CSS + JS
-      return this.streamFile(req, res, absoluteFilePath, stat)
+      return this.streamFile(req, res, absoluteFilePath, stat, mimeType, cors)
         .then(
           (status) =>
             typeof status === "string" &&
@@ -201,11 +224,12 @@ class HTTPController {
       return this.handleHeadRequest(
         res,
         Buffer.byteLength(HTML).toString(),
-        "text/html"
+        "text/html",
+        cors
       );
 
     // Woohoo! Return HTML
-    return this.handleResponse(res, HTML);
+    return this.handleResponse(res, HTML, cors);
   }
 
   handleOptionsRequest(res) {
@@ -215,20 +239,25 @@ class HTTPController {
       .end();
   }
 
-  handleHeadRequest(res, size, mimeType) {
-    return res
+  handleHeadRequest(res, size, mimeType, cors) {
+    res
       .writeStatus(HTTPController.STATUSES[200])
       .writeHeader("Content-Type", mimeType)
-      .writeHeader("Content-Length", size)
-      .endWithoutBody();
+      .writeHeader("Content-Length", size);
+
+    if (cors) res.writeHeader("Access-Control-Allow-Origin", cors);
+
+    return res.endWithoutBody();
   }
 
-  handleRedirect(res, redirect) {
-    return res
-      .writeStatus(HTTPController.STATUSES[301])
-      .writeHeader("Location", redirect)
-      .endWithoutBody();
+  handleRedirect(res, redirect, cors) {
+    res.writeStatus(HTTPController.STATUSES[301]).writeHeader("Location", redirect);
+
+    if (cors) res.writeHeader("Access-Control-Allow-Origin", cors);
+
+    return res.endWithoutBody();
   }
+
 
   generateRequestObject(url, method, query, params) {
     return {
@@ -243,14 +272,15 @@ class HTTPController {
     };
   }
 
-  handleResponse(res, HTML) {
-    return res
-      .writeStatus("200 OK")
-      .writeHeader("Content-Type", "text/html")
-      .end(HTML);
+  handleResponse(res, HTML, cors) {
+    res.writeStatus("200 OK").writeHeader("Content-Type", "text/html");
+
+    if (cors) res.writeHeader("Access-Control-Allow-Origin", cors);
+
+    return res.end(HTML);
   }
 
-  handleError(code, res, requestObject, isStatic) {
+  handleError(code, res, requestObject, cors, isStatic) {
     let HTML = null;
 
     if (this.errorHandler && !isStatic) {
@@ -260,10 +290,13 @@ class HTTPController {
 
     if (!HTML) HTML = HTTPController.STATUSES[code];
 
-    return res
+    res
       .writeStatus(HTTPController.STATUSES[code])
-      .writeHeader("Content-Type", "text/html")
-      .end(HTML);
+      .writeHeader("Content-Type", "text/html");
+
+    if (cors) res.writeHeader("Access-Control-Allow-Origin", cors);
+
+    return res.end(HTML);
   }
 
   onAbortedOrFinishedStream(res, readStream, promise) {
@@ -282,7 +315,7 @@ class HTTPController {
     );
   }
 
-  streamFile(req, res, file, stat) {
+  streamFile(req, res, file, stat, mimeType, cors) {
     return new Promise((resolve, reject) => {
       const ifModifiedSince = req.getHeader("if-modified-since");
       const { mtime } = stat;
@@ -293,6 +326,8 @@ class HTTPController {
       }
 
       const headers = [];
+
+      headers.push(["Content-Type", mimeType]);
 
       mtime.setMilliseconds(0);
       const mtimeutc = mtime.toUTCString();
@@ -320,6 +355,10 @@ class HTTPController {
         // TODO: test it
         res.writeStatus(HTTPController.STATUSES[206]);
         size = end - start;
+      }
+
+      if (cors) {
+        headers.push(["Access-Control-Allow-Origin", cors]);
       }
 
       this.writeHeaders(res, headers);
@@ -407,7 +446,7 @@ class HTTPController {
     return {
       200: "200 OK",
       206: "206 Partial Content",
-      301: "Moved Permanently",
+      301: "301 Moved Permanently",
       304: "304 Not Modified",
       403: "403 Forbidden",
       404: "404 Not Found",
