@@ -16,6 +16,7 @@ process.on("SIGINT", () => {
 const Templates = new TemplateEngine();
 const HTTP = new HTTPController({
   templateEngine: Templates,
+  cors: "*",
   errorHandler: (request, code) => {
     // const { url, method, params, query } = request;
     const errorMessages = {
@@ -41,8 +42,7 @@ const HTTP = new HTTPController({
   {
     pattern: "/worker.js",
     method: HTTPController.METHODS.GET,
-    redirect: "/static/worker.js",
-    cors: true
+    redirect: "/static/worker.js"
   },
   {
     pattern: "/static/(.+)",

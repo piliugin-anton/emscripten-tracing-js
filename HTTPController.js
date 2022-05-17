@@ -50,7 +50,7 @@ class HTTPController {
     }
 
     if (!route.static && typeof route.method !== "string") {
-      route.method = HTTPController.METHODS.ANY;
+      route.method = HTTPController.METHODS.GET;
     }
 
     if (route.hasOwnProperty("cors") && typeof route.cors !== "string") {
