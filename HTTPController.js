@@ -234,13 +234,13 @@ class HTTPController {
   streamFile(req, res, file, stat) {
     return new Promise((resolve, reject) => {
       const ifModifiedSince = req.getHeader("if-modified-since");
+      const { mtime } = stat;
 
       if (ifModifiedSince && new Date(ifModifiedSince) >= mtime) {
         // TODO: test it
         return resolve(HTTPController.STATUS_CODES[304]);
       }
 
-      const { mtime } = stat;
       const headers = [];
 
       mtime.setMilliseconds(0);
@@ -254,10 +254,10 @@ class HTTPController {
       let { size } = stat;
       let start = 0;
       let end = size;
-      if (range) {
-        const parts = range.replace("bytes=", "").split("-");
-        const startNumber = Number(parts[0]);
-        const endNumber = Number(parts[1]);
+      if (req.__METHOD === HTTPController.METHODS.GET && range) {
+        const match = range.match(/bytes=([0-9]+)-([0-9]+)/);
+        const startNumber = Number(match[1]);
+        const endNumber = Number(match[2]);
         if (startNumber < endNumber) {
           if (startNumber > 0 && startNumber < end) {
             start = startNumber;
