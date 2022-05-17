@@ -245,19 +245,25 @@ class HTTPController {
       .writeHeader("Content-Type", mimeType)
       .writeHeader("Content-Length", size);
 
-    if (cors) res.writeHeader("Access-Control-Allow-Origin", cors);
+    this.addCORS(res, cors);
 
     return res.endWithoutBody();
   }
 
   handleRedirect(res, redirect, cors) {
-    res.writeStatus(HTTPController.STATUSES[301]).writeHeader("Location", redirect);
+    res.writeStatus(HTTPController.STATUSES[301]);
 
-    if (cors) res.writeHeader("Access-Control-Allow-Origin", cors);
+    this.addCORS(res, cors);
 
-    return res.endWithoutBody();
+    return res.writeHeader("Location", redirect).endWithoutBody();
   }
 
+  addCORS(res, cors) {
+    if (cors) {
+      res.writeHeader("Access-Control-Allow-Origin", cors);
+      res.writeHeader(`Access-Control-Allow-Methods: ${ HTTPController.AVAILABLE_METHODS }`);
+    }
+  }
 
   generateRequestObject(url, method, query, params) {
     return {
@@ -275,7 +281,7 @@ class HTTPController {
   handleResponse(res, HTML, cors) {
     res.writeStatus("200 OK").writeHeader("Content-Type", "text/html");
 
-    if (cors) res.writeHeader("Access-Control-Allow-Origin", cors);
+    this.addCORS(res, cors);
 
     return res.end(HTML);
   }
@@ -294,7 +300,7 @@ class HTTPController {
       .writeStatus(HTTPController.STATUSES[code])
       .writeHeader("Content-Type", "text/html");
 
-    if (cors) res.writeHeader("Access-Control-Allow-Origin", cors);
+    this.addCORS(res, cors);
 
     return res.end(HTML);
   }
@@ -433,13 +439,12 @@ class HTTPController {
     };
   }
 
+  static get AVAILABLE_METHODS() {
+    return Object.keys(HTTPController.METHODS).filter((m) => m !== "ANY").join(", ");
+  }
+
   static get OPTIONS_HEADER() {
-    return [
-      "Allow",
-      Object.keys(HTTPController.METHODS)
-        .filter((m) => m !== "ANY")
-        .join(", "),
-    ];
+    return ["Allow", this.AVAILABLE_METHODS];
   }
 
   static get STATUSES() {

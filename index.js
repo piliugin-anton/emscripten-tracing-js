@@ -45,7 +45,6 @@ const HTTP = new HTTPController({
   {
     pattern: "/worker.js",
     method: HTTPController.METHODS.GET,
-    redirect: "/static/worker.js",
     static: true,
     cors: "*"
   },
@@ -59,7 +58,7 @@ const HTTP = new HTTPController({
 
 uWS
   .App()
-  .ws("/*", {
+  .ws("/tracer", {
     /* There are many common helper features */
     idleTimeout: 32,
     maxBackpressure: 1024,
@@ -71,7 +70,7 @@ uWS
       /* You can do app.publish('sensors/home/temperature', '22C') kind of pub/sub as well */
 
       /* Here we echo the message back, using compression if available */
-      let ok = ws.send(message, isBinary, true);
+      //let ok = ws.send(message, isBinary, true);
     },
   })
   .any(...HTTP.attach())
