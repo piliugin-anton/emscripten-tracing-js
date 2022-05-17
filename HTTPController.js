@@ -109,8 +109,8 @@ class HTTPController {
       const match = this.routes[i].match(req.__URL);
       if (
         match &&
-        (this.routes[i].method === req.__METHOD ||
-          this.routes[i].method === "any")
+        (req.__METHOD === HTTPController.METHODS.HEAD || this.routes[i].method === req.__METHOD ||
+          this.routes[i].method === HTTPController.METHODS.ANY)
       ) {
         //console.log("matched params", matched.params)
         req.__ROUTE = this.routes[i];
@@ -144,16 +144,23 @@ class HTTPController {
       if (!stat.isFile())
         return this.handleError(404, res, requestObject, true);
 
+      const mimeType = mime.getType(absoluteFilePath) || "application/octet-stream";
+
+      // Head request
+      if (req.__METHOD === HTTPController.METHODS.HEAD) return this.handleHeadRequest(res, stat.size.toString(), mimeType);
+
+      // Sending mime type
+      res.writeHeader("Content-Type", mimeType);
       // Stream a file
       // TODO: Bundle CSS + JS
       return this.streamFile(req, res, absoluteFilePath, stat)
         .then(
           (status) =>
-            typeof status === "string" && res.writeStatus(status).end()
+            typeof status === "string" && res.writeStatus(status).endWithoutBody()
         )
         .catch((err) => {
-          console.log("fileStream exception", err);
-          return res.end();
+          console.log("streamFile() exception", err);
+          return res.endWithoutBody();
         });
     }
 
@@ -168,6 +175,9 @@ class HTTPController {
     // Cannot render HTML, return 500
     if (!HTML) return this.handleError(500, res, requestObject);
 
+    // Head request
+    if (req.__METHOD === HTTPController.METHODS.HEAD) return this.handleHeadRequest(res, Buffer.byteLength(HTML).toString(), "text/html");
+    
     // Woohoo! Return HTML
     return this.handleResponse(res, HTML);
   }
@@ -177,6 +187,14 @@ class HTTPController {
       .writeStatus(HTTPController.STATUS_CODES[200])
       .writeHeader(...HTTPController.OPTIONS_HEADER)
       .end();
+  }
+
+  handleHeadRequest(res, size, mimeType) {
+    return res
+      .writeStatus(HTTPController.STATUS_CODES[200])
+      .writeHeader("Content-Type", mimeType)
+      .writeHeader("Content-Length", size)
+      .endWithoutBody();
   }
 
   generateRequestObject(url, method, query, params) {
@@ -246,9 +264,6 @@ class HTTPController {
       mtime.setMilliseconds(0);
       const mtimeutc = mtime.toUTCString();
       headers.push(["Last-Modified", mtimeutc]);
-
-      const mimeType = mime.getType(file) || "application/octet-stream";
-      headers.push(["Content-Type", mimeType]);
 
       const range = req.getHeader("range");
       let { size } = stat;
@@ -340,6 +355,7 @@ class HTTPController {
 
   static get METHODS() {
     return {
+      HEAD: "head",
       GET: "get",
       POST: "post",
       ANY: "any",

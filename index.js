@@ -1,4 +1,3 @@
-const path = require("path");
 const uWS = require("uWebSockets.js");
 const HTTPController = require("./HTTPController.js");
 const TemplateEngine = require("./TemplateEngine.js");
@@ -24,10 +23,10 @@ const HTTP = new HTTPController({
       404: "The page that you requested could not be found.",
       500: "It's always time for a tea break."
     };
-
+    // TODO: test it
     return {
       template: "errors.eta",
-      data: { code, pageTitle: HTTPController.STATUS_CODES[code], message: errorMessages[code] || "" },
+      data: { code, pageTitle: HTTPController.STATUS_CODES[code], message: errorMessages[code] },
     };
   },
 }).addRoutes([

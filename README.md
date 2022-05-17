@@ -6,3 +6,6 @@ A JavaScript version of https://github.com/waywardmonkeys/emscripten-trace-colle
 Features:
 - Bundling of CSS and JavaScript
 - WebSockets for worker
+
+Requirements:
+- Node v14.15.0
