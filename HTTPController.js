@@ -297,7 +297,7 @@ class HTTPController {
       });
 
       res.onAborted(() =>
-        this.onAbortedOrFinishedStream(res, readStream, () => resolve(null))
+        this.onAbortedOrFinishedStream(res, readStream, () => resolve())
       );
 
       readStream.on("error", (err) => {
@@ -317,7 +317,7 @@ class HTTPController {
 
         /* Did we successfully send last chunk? */
         if (done) {
-          this.onAbortedOrFinishedStream(res, readStream, () => resolve(true));
+          this.onAbortedOrFinishedStream(res, readStream, () => resolve());
         } else if (!ok) {
           /* If we could not send this chunk (backpressure), pause */
           readStream.pause();
@@ -338,7 +338,7 @@ class HTTPController {
 
             if (done) {
               this.onAbortedOrFinishedStream(res, readStream, () =>
-                resolve(true)
+                resolve()
               );
             } else if (ok) {
               readStream.resume();
