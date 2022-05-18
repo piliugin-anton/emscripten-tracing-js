@@ -58,20 +58,27 @@ const HTTP = new HTTPController({
 
 uWS
   .App()
-  .ws("/tracer", {
+  .ws("/", {
     /* There are many common helper features */
-    idleTimeout: 32,
-    maxBackpressure: 1024,
-    maxPayloadLength: 512,
-    compression: uWS.DEDICATED_COMPRESSOR_3KB,
+    idleTimeout: 0,
+    maxBackpressure: 1024 * 1024,
+    maxPayloadLength: 16 * 1024,
+    compression: uWS.DISABLED,
+    sendPingsAutomatically: true,
 
     /* For brevity we skip the other events (upgrade, open, ping, pong, close) */
     message: (ws, message, isBinary) => {
       /* You can do app.publish('sensors/home/temperature', '22C') kind of pub/sub as well */
 
       /* Here we echo the message back, using compression if available */
-      //let ok = ws.send(message, isBinary, true);
+      let ok = ws.send("ok", isBinary, true);
     },
+    drain: (ws) => {
+      console.log('WebSocket backpressure: ' + ws.getBufferedAmount());
+    },
+    close: (ws, code, message) => {
+      console.log(`WebSocket closed ${code}`);
+    }
   })
   .any(...HTTP.attach())
   .listen(port, (token) => {

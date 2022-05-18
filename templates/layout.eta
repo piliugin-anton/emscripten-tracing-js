@@ -7,39 +7,12 @@
     <title><%= it.title %> &mdash; Trace Collector</title>
     <link rel="shortcut icon" href="/static/favicon.ico" />
 
-    <!-- Bootstrap -->
-    <link rel="stylesheet" href="/static/bootstrap-4.6.1/css/bootstrap.min.css" type="text/css" />
-    <link rel="stylesheet" href="/static/jquery-ui-1.13.1/jquery-ui.min.css" type="text/css" />
-    <link rel="stylesheet" href="/static/c3-0.7.2.0/c3.min.css" type="text/css" />
-    <link rel="stylesheet" href="/static/jquery-ui-plugins/jquery-ui-slider-pips.min.css" type="text/css" />
-    <link rel="stylesheet" href="/static/slickgrid/slick.grid.css" type="text/css" />
-    <link rel="stylesheet" href="/static/slickgrid/slick-default-theme.css" type="text/css" />
-    <link rel="stylesheet" href="/static/slickgrid/controls/slick.pager.css" type="text/css" />
-
-    <link rel="stylesheet" href="/static/style.css" type="text/css" />
+    <link rel="stylesheet" href="/static/bundle.css" type="text/css" />
 
     <!-- Google Ajax loader -->
     <script type="text/javascript" src="https://www.google.com/jsapi"></script>
 
-    <!-- jQuery (necessary for Bootstrap's JavaScript plugins) -->
-    <script src="/static/jquery/jquery-3.6.0.min.js"></script>
-
-    <script src="/static/jquery-ui-1.13.1/jquery-ui.min.js"></script>
-
-    <!-- Latest compiled and minified JavaScript -->
-    <script src="/static/bootstrap-4.6.1/js/bootstrap.bundle.min.js"></script>
-
-    <script src="/static/d3-7.4.4/d3.min.js"></script>
-    <script src="/static/c3-0.7.2.0/c3.min.js"></script>
-    <script src="/static/crossfilter-1.5.4/crossfilter.min.js"></script>
-    <script src="/static/jquery-ui-plugins/jquery-ui-slider-pips.min.js"></script>
-    <script src="/static/slickgrid/lib/jquery.event.drag-2.3.0.js"></script>
-    <script src="/static/slickgrid/slick.core.js"></script>
-    <script src="/static/slickgrid/slick.grid.js"></script>
-    <script src="/static/slickgrid/slick.dataview.js"></script>
-    <script src="/static/slickgrid/controls/slick.pager.js"></script>
-    <script src="/static/slickgrid/plugins/slick.rowmovemanager.js"></script>
-    <script src="/static/slickgrid/plugins/slick.rowselectionmodel.js"></script>
+    <script type="text/javascript" src="/static/bundle.js"></script>
 
     <%~ it.extrahead || "" %>
   </head>

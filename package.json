@@ -4,7 +4,7 @@
   "description": "Emscripten tracing JS",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "bundle": "gulp"
   },
   "keywords": [
     "Emscripten"
@@ -12,9 +12,21 @@
   "author": "Anton Piliugin",
   "license": "ISC",
   "dependencies": {
+    "@babel/core": "^7.17.12",
+    "@babel/preset-env": "^7.17.12",
+    "@babel/register": "^7.17.7",
+    "babelify": "^10.0.0",
+    "browserify": "^17.0.0",
     "eta": "^1.12.3",
+    "gulp": "^4.0.2",
+    "gulp-concat": "^2.6.1",
+    "gulp-if": "^3.0.0",
     "mime": "^3.0.0",
     "path-to-regexp": "^6.2.1",
-    "uWebSockets.js": "uNetworking/uWebSockets.js#v20.10.0"
+    "reconnecting-websocket": "^4.4.0",
+    "uWebSockets.js": "uNetworking/uWebSockets.js#v20.10.0",
+    "vinyl-buffer": "^1.0.1",
+    "vinyl-source-stream": "^2.0.0",
+    "websocket-as-promised": "^2.0.1"
   }
 }
