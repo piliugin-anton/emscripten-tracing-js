@@ -5,23 +5,34 @@ var browserify = require("browserify");
 var babelify = require("babelify");
 var source = require("vinyl-source-stream");
 var buffer = require("vinyl-buffer");
+var babelMinify = require("gulp-babel-minify");
+var minify = require("gulp-minify");
+var path = require("path");
 var resources = require("./templates/resources");
 
 gulp.task("worker.js", function () {
   var browserified = browserify({
     entries: "./src/worker.js",
-    debug: true,
+    debug: false,
+    sourceMaps: false,
     transform: [
       babelify.configure({
-        presets: ["@babel/preset-env"],
+        presets: ["@babel/preset-env"]
       }),
     ],
   });
 
   return browserified
     .bundle()
-    .pipe(source("./src/worker.js"))
+    .pipe(source("worker.js"))
     .pipe(buffer())
+    /*.pipe(
+      babelMinify({
+      mangle: {
+        keepClassName: true
+      }
+    })
+    )*/
     .pipe(gulp.dest(__dirname));
 });
 

@@ -4,14 +4,15 @@ const TemplateEngine = require("./TemplateEngine.js");
 
 const port = 5000;
 let serverToken = null;
+const wsBuffer = [];
 
-process.on("SIGINT", () => {
+/*process.on("SIGINT", () => {
   if (serverToken) {
     console.log("Shutting down the server...");
     uWS.us_listen_socket_close(serverToken);
   }
   console.log("Removing files...");
-});
+});*/
 
 const Templates = new TemplateEngine();
 const HTTP = new HTTPController({
@@ -21,12 +22,16 @@ const HTTP = new HTTPController({
     const errorMessages = {
       403: "You tried to access a page you did not have prior authorization for.",
       404: "The page that you requested could not be found.",
-      500: "It's always time for a tea break."
+      500: "It's always time for a tea break.",
     };
     // TODO: test it
     return {
       template: "errors.eta",
-      data: { code, pageTitle: HTTPController.STATUSES[code], message: errorMessages[code] },
+      data: {
+        code,
+        pageTitle: HTTPController.STATUSES[code],
+        message: errorMessages[code],
+      },
     };
   },
 }).addRoutes([
@@ -37,8 +42,8 @@ const HTTP = new HTTPController({
     handler: (request) => {
       return {
         title: "Sessions",
-        pageTitle: "Sessions"/*,
-        sessions: []*/
+        pageTitle: "Sessions" /*,
+        sessions: []*/,
       };
     },
   },
@@ -46,7 +51,7 @@ const HTTP = new HTTPController({
     pattern: "/worker.js",
     method: HTTPController.METHODS.GET,
     static: true,
-    cors: "*"
+    cors: "*",
   },
   {
     pattern: "/static/(.+)",
@@ -60,25 +65,44 @@ uWS
   .App()
   .ws("/", {
     /* There are many common helper features */
-    idleTimeout: 0,
+    idleTimeout: 32,
     maxBackpressure: 1024 * 1024,
-    maxPayloadLength: 16 * 1024,
-    compression: uWS.DISABLED,
-    sendPingsAutomatically: true,
+    maxPayloadLength: 16 * 1024 * 1024,
+    compression: uWS.SHARED_COMPRESSOR,
+    sendPingsAutomatically: false,
 
     /* For brevity we skip the other events (upgrade, open, ping, pong, close) */
     message: (ws, message, isBinary) => {
       /* You can do app.publish('sensors/home/temperature', '22C') kind of pub/sub as well */
-
       /* Here we echo the message back, using compression if available */
-      let ok = ws.send("ok", isBinary, true);
+
+      const json = JSON.parse(Buffer.from(message));
+
+      const messages = Object.keys(json)
+        .map((key) => json[key])
+        .filter((msg) => typeof msg === "object");
+
+      const ids = messages.map((msg) => msg.id);
+
+      const response = {
+        id: json.id,
+        ids,
+      };
+
+      const msg = JSON.stringify(response);
+
+      if (ws.getBufferedAmount() === 0) {
+        ws.send(msg, isBinary, false);
+      } else {
+        wsBuffer.push({ msg, isBinary, compressed: false });
+      }
     },
     drain: (ws) => {
-      console.log('WebSocket backpressure: ' + ws.getBufferedAmount());
+      if (ws.getBufferedAmount() === 0 && wsBuffer.length) {
+        const { msg, isBinary, compressed } = wsBuffer.splice(0, 1)[0];
+        ws.send(msg, isBinary, compressed);
+      }
     },
-    close: (ws, code, message) => {
-      console.log(`WebSocket closed ${code}`);
-    }
   })
   .any(...HTTP.attach())
   .listen(port, (token) => {
