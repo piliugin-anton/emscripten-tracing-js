@@ -8,11 +8,14 @@ var buffer = require("vinyl-buffer");
 var babelMinify = require("gulp-babel-minify");
 var minify = require("gulp-minify");
 var nodemon = require("gulp-nodemon");
+var stripJS = require("gulp-strip-comments");
+var cleanCSS = require("gulp-clean-css");
 var path = require("path");
 var resources = require("./templates/resources");
 
 var workerFilePath = path.join(__dirname, "src", "worker.js");
 var templatesGlob = path.join(__dirname, "templates", "**/*");
+var style = path.join(__dirname, "static", "style.css");
 
 gulp.task("worker.js", function () {
   var browserified = browserify({
@@ -37,14 +40,56 @@ gulp.task("worker.js", function () {
         },
       })
     )
+    .pipe(
+      stripJS({
+        safe: false,
+        space: false,
+        trim: true,
+      })
+    )
     .pipe(gulp.dest(__dirname));
 });
 
 gulp.task("templates", function () {
   return gulp
     .src(resources)
-    .pipe(gif("**/*.js", concat("bundle.js")))
-    .pipe(gif("**/*.css", concat("bundle.css")))
+    .pipe(gif("**/*.js", concat("bundle.min.js")))
+    .pipe(gif("**/*.css", concat("bundle.min.css")))
+    .pipe(
+      gif(
+        "bundle.min.js",
+        minify({
+          ext: {
+            min: ".js",
+          },
+          noSource: true,
+          mangle: false,
+        })
+      )
+    )
+    .pipe(
+      gif(
+        "bundle.min.js",
+        stripJS({
+          safe: false,
+          space: false,
+          trim: true,
+        })
+      )
+    )
+    .pipe(
+      gif(
+        "bundle.min.css",
+        cleanCSS({
+          compatibility: "*",
+          level: {
+            1: {
+              specialComments: 0
+            }
+          },
+        })
+      )
+    )
     .pipe(gulp.dest("static"));
 });
 
@@ -56,7 +101,7 @@ gulp.task("develop", function (done) {
     },
     ext: "js json eta",
     ignore: ["gulpfile.js", "package.json", "package-lock.json"],
-    watch: ["./server.js", "./static/bundle.js", "./static/bundle.css"],
+    watch: ["./server.js", "./static/bundle.min.js", "./static/bundle.min.css"],
     done: done,
   });
 
@@ -70,7 +115,7 @@ gulp.task("develop", function (done) {
     });
 
   gulp.watch(workerFilePath, gulp.series("worker.js"));
-  gulp.watch(templatesGlob, gulp.series("templates"));
+  gulp.watch([templatesGlob, style], gulp.series("templates"));
 });
 
 var defaultTasks = ["worker.js", "templates"];

@@ -1,6 +1,7 @@
 const uWS = require("uWebSockets.js");
 const HTTPController = require("./HTTPController.js");
 const TemplateEngine = require("./TemplateEngine.js");
+const  { printObject } = require("./utils");
 
 const port = 5000;
 let serverToken = null;
@@ -12,7 +13,7 @@ const shutdown = (event) => {
     uWS.us_listen_socket_close(serverToken);
   }
   console.log(`[${event}] Removing files...`);
-}
+};
 
 process.on("SIGINT", () => shutdown("SIGINT"));
 process.on("SIGTERM", () => shutdown("SIGTERM"));
@@ -72,17 +73,19 @@ uWS
     maxBackpressure: 1024 * 1024,
     maxPayloadLength: 16 * 1024 * 1024,
     compression: uWS.SHARED_COMPRESSOR,
-    sendPingsAutomatically: false,
+    sendPingsAutomatically: true,
 
     upgrade: (res, req, context) => {
-      res.upgrade({
-        url: `${req.getUrl()}?${req.getQuery()}`
-      },
-      /* Spell these correctly */
-      req.getHeader('sec-websocket-key'),
-      req.getHeader('sec-websocket-protocol'),
-      req.getHeader('sec-websocket-extensions'),
-      context);
+      res.upgrade(
+        {
+          url: `${req.getUrl()}?${req.getQuery()}`,
+        },
+        /* Spell these correctly */
+        req.getHeader("sec-websocket-key"),
+        req.getHeader("sec-websocket-protocol"),
+        req.getHeader("sec-websocket-extensions"),
+        context
+      );
     },
 
     /* For brevity we skip the other events (upgrade, open, ping, pong, close) */
@@ -91,32 +94,30 @@ uWS
       const params = url.searchParams;
       const version = params.get("version");
       const session = params.get("session");
-      
+
       if (!version || !session) return;
 
-      // Compress message?
-      const compressed = true;
-      // Get JSON from message
-      const json = JSON.parse(Buffer.from(message));
+      try {
+        // Compress message?
+        const compressed = true;
+        // Get JSON from message
+        const { traces, length } = JSON.parse(Buffer.from(message));
+        if (traces && length) {
+          // Do the work with traces
 
-      const messages = Object.keys(json)
-        .map((key) => json[key]);
-
-      
-
-      const ids = messages.map((msg) => msg.id);
-      const msg = JSON.stringify(ids);
-
-      if (ws.getBufferedAmount() === 0) {
-        return ws.send(msg, isBinary, compressed);
-      } else {
-        return wsBuffer.push({ msg, isBinary, compressed });
-      }
+          const msg = length.toString();
+          if (ws.send(msg, isBinary, compressed) !== 1) {
+            return wsBuffer.push({ msg, isBinary, compressed });
+          }
+        }
+      } catch (ex) {}
     },
     drain: (ws) => {
       if (ws.getBufferedAmount() === 0 && wsBuffer.length) {
-        const { msg, isBinary, compressed } = wsBuffer.splice(0, 1)[0];
-        ws.send(msg, isBinary, compressed);
+        const { msg, isBinary, compressed } = wsBuffer[0];
+        if (ws.send(msg, isBinary, compressed) === 1) {
+          wsBuffer.splice(0, 1);
+        }
       }
     },
   })

@@ -13,21 +13,25 @@
   "author": "Anton Piliugin",
   "license": "ISC",
   "dependencies": {
+    "eta": "^1.12.3",
+    "mime": "^3.0.0",
+    "path-to-regexp": "^6.2.1",
+    "uWebSockets.js": "uNetworking/uWebSockets.js#v20.10.0",
+    "websocket-reconnect-pro": "^1.6.0"
+  },
+  "devDependencies": {
     "@babel/preset-env": "^7.17.12",
     "babelify": "^10.0.0",
     "browserify": "^17.0.0",
     "cross-env": "^7.0.3",
-    "eta": "^1.12.3",
     "gulp": "^4.0.2",
     "gulp-babel-minify": "^0.5.2",
+    "gulp-clean-css": "^4.3.0",
     "gulp-concat": "^2.6.1",
     "gulp-if": "^3.0.0",
     "gulp-minify": "^3.1.0",
     "gulp-nodemon": "^2.5.0",
-    "mime": "^3.0.0",
-    "path-to-regexp": "^6.2.1",
-    "reconnecting-websocket": "^4.4.0",
-    "uWebSockets.js": "uNetworking/uWebSockets.js#v20.10.0",
+    "gulp-strip-comments": "^2.5.2",
     "vinyl-buffer": "^1.0.1",
     "vinyl-source-stream": "^2.0.0"
   }

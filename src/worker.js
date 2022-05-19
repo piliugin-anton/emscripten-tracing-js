@@ -1,5 +1,4 @@
-import ReconnectingWebSocket from "reconnecting-websocket";
-
+import WebsocketReconnect from "websocket-reconnect-pro";
 class Tracing {
   constructor() {
     this.ws = null;
@@ -21,22 +20,26 @@ class Tracing {
 
     this.wsURL = wsUrl;
 
-    this.ws = new ReconnectingWebSocket(this.wsURL, "emscripten-trace", {
-      maxRetries: Infinity,
-      connectionTimeout: 10000,
+    this.ws = new WebsocketReconnect(this.wsURL, "emscripten-trace", {
       minUptime: 1000,
-      maxReconnectInterval: 1000,
-      reconnectDecay: 1,
-      debug: true
+      minReconnectionDelay: 1000,
+      maxReconnectionDelay: 10000,
+      connectionTimeout: 5000,
+      reconnectionDelayGrowFactor: 1.1,
+      maxRetries: Infinity,
+      maxEnqueuedMessages: 0,
+      startClosed: false,
+      enableHeartbeat: false,
+      debug: false,
     });
 
     this.ws.onmessage = (e) => this._onMessage(e.data);
+    this.ws.onopen = () => this._scheduleSend();
   }
 
   disconnect() {
-    console.log("disconnect!!!");
     if (this.queue.length > 0) {
-      this._scheduleSend(1);
+      this._scheduleSend(0);
       return setTimeout(this.disconnect, this.DISCONNECT_TIMEOUT);
     }
 
@@ -44,23 +47,20 @@ class Tracing {
   }
 
   send(message) {
-    this.queue.push({ id: this._generateID(), message });
+    this.queue.push(message);
     this._scheduleSend();
   }
 
-  _onMessage(data) {
-    console.log("Got response");
-    try {
-      const ids = JSON.parse(data);
-      if (ids.length) this.queue = this.queue.filter((msg) => !ids.includes(msg.id));
-    } catch(ex) {
-      console.error("Receieved message is not a JSON string");
-    }
+  _onMessage(length) {
+    this.queue.splice(0, Number(length));
   }
 
   _scheduleSend(timeout) {
     clearTimeout(this.timeout);
-    this.timeout = setTimeout(this._sendQueue.bind(this), timeout || this.SEND_TIMEOUT);
+    this.timeout = setTimeout(
+      this._sendQueue.bind(this),
+      timeout || this.SEND_TIMEOUT
+    );
   }
 
   _sendQueue() {
@@ -68,12 +68,7 @@ class Tracing {
 
     if (!this.isConnected) return this._scheduleSend();
 
-    console.log("Sending queue...");
-    this.ws.send(JSON.stringify(this.queue));
-  }
-
-  _generateID() {
-    return Math.random().toString(36).slice(2);
+    this.ws.send(JSON.stringify({ traces: this.queue, length: this.queue.length }));
   }
 }
 
