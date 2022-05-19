@@ -6,13 +6,17 @@ const port = 5000;
 let serverToken = null;
 const wsBuffer = [];
 
-/*process.on("SIGINT", () => {
+const shutdown = (event) => {
   if (serverToken) {
     console.log("Shutting down the server...");
     uWS.us_listen_socket_close(serverToken);
   }
-  console.log("Removing files...");
-});*/
+  console.log(`[${event}] Removing files...`);
+}
+
+process.on("SIGINT", () => shutdown("SIGINT"));
+process.on("SIGTERM", () => shutdown("SIGTERM"));
+process.on("SIGUSR2", () => shutdown("SIGUSR2"));
 
 const Templates = new TemplateEngine();
 const HTTP = new HTTPController({

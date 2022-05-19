@@ -26,7 +26,7 @@ class Tracing {
       connectionTimeout: 10000,
       minUptime: 1000,
       maxReconnectInterval: 1000,
-      reconnectionDelayGrowFactor: 1,
+      reconnectDecay: 1,
       debug: true
     });
 

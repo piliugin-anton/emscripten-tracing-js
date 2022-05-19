@@ -26,20 +26,18 @@ gulp.task("worker.js", function () {
     ],
   });
 
-  return (
-    browserified
-      .bundle()
-      .pipe(source("worker.js"))
-      .pipe(buffer())
-      /*.pipe(
+  return browserified
+    .bundle()
+    .pipe(source("worker.js"))
+    .pipe(buffer())
+    .pipe(
       babelMinify({
-      mangle: {
-        keepClassName: true
-      }
-    })
-    )*/
-      .pipe(gulp.dest(__dirname))
-  );
+        mangle: {
+          keepClassName: true,
+        },
+      })
+    )
+    .pipe(gulp.dest(__dirname));
 });
 
 gulp.task("templates", function () {
@@ -51,28 +49,24 @@ gulp.task("templates", function () {
 });
 
 gulp.task("develop", function (done) {
-  var stream = nodemon({
+  var server = nodemon({
     script: "server.js",
     env: {
-      NODE_ENV: "development"
+      NODE_ENV: "development",
     },
     ext: "js json eta",
     ignore: ["gulpfile.js", "package.json", "package-lock.json"],
-    watch: [
-      "./server.js",
-      "./static/bundle.js",
-      "./static/bundle.css",
-    ],
+    watch: ["./server.js", "./static/bundle.js", "./static/bundle.css"],
     done: done,
   });
 
-  stream
+  server
     .on("restart", function () {
       console.log("Server restarted!");
     })
     .on("crash", function () {
       console.error("Server has crashed! Restarting in 3 sec");
-      stream.emit("restart", 3);
+      server.emit("restart", 3);
     });
 
   gulp.watch(workerFilePath, gulp.series("worker.js"));
