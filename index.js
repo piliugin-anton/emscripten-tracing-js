@@ -49,15 +49,13 @@ const HTTP = new HTTPController({
   },
   {
     pattern: "/worker.js",
-    method: HTTPController.METHODS.GET,
     static: true,
     cors: "*",
   },
   {
     pattern: "/static/(.+)",
-    method: HTTPController.METHODS.GET,
-    dir: __dirname,
     static: true,
+    dir: __dirname,
   },
 ]);
 
@@ -65,7 +63,7 @@ uWS
   .App()
   .ws("/", {
     /* There are many common helper features */
-    idleTimeout: 32,
+    idleTimeout: 0,
     maxBackpressure: 1024 * 1024,
     maxPayloadLength: 16 * 1024 * 1024,
     compression: uWS.SHARED_COMPRESSOR,

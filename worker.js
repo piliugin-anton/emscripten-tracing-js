@@ -3167,11 +3167,8 @@ var Tracing = /*#__PURE__*/function () {
     this.wsp = null;
     this.rws = null;
     this.queue = [];
-    this.isSending = false;
     this.timeout = null;
-    this.interval = null;
     this.SEND_TIMEOUT = 500;
-    this.SEND_INTERVAL = 1000;
     this.DISCONNECT_TIMEOUT = 1000;
   }
 
@@ -3187,11 +3184,15 @@ var Tracing = /*#__PURE__*/function () {
 
       this.wsp = new _websocketAsPromised["default"](wsUrl, {
         createWebSocket: function createWebSocket(url) {
-          _this.rws = new _reconnectingWebsocket["default"](url);
+          if (_this.rws === null) {
+            _this.rws = new _reconnectingWebsocket["default"](url);
+            _this.rws.debug = true;
+            _this.rws.maxReconnectInterval = 1000;
 
-          _this.rws.onopen = function () {
-            return _this._scheduleSend();
-          };
+            _this.rws.onopen = function () {
+              return _this._scheduleSend();
+            };
+          }
 
           return _this.rws;
         },
@@ -3211,14 +3212,12 @@ var Tracing = /*#__PURE__*/function () {
           return data && data.id;
         }
       });
-      this.interval = setInterval(this._sendQueue.bind(this), this.SEND_INTERVAL);
       return this.wsp.open();
     }
   }, {
     key: "disconnect",
     value: function disconnect() {
       if (this.queue.length > 0) return setTimeout(this.disconnect, this.DISCONNECT_TIMEOUT);
-      clearInterval(this.interval);
       if (this.wsp.isOpened) return this.wsp.close();
       return Promise.reject("WebSocket is not connected");
     }
@@ -3243,8 +3242,10 @@ var Tracing = /*#__PURE__*/function () {
     value: function _sendQueue() {
       var _this2 = this;
 
-      if (this.isClosed || this.queue.length === 0 || this.isSending) return;
+      if (this.queue.length === 0) return;
+      console.log("Sending queue...");
       this.wsp.sendRequest(this.queue).then(function (data) {
+        console.log("Queue sent, got response...");
         var ids = data.ids;
         _this2.queue = _this2.queue.filter(function (msg) {
           return !ids.includes(msg.id);

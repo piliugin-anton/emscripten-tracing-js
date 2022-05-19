@@ -53,7 +53,48 @@ class HTTPController {
       throw new Error("Non-static routes must have a handler.");
     }
 
-    if (!route.static && typeof route.method !== "string") {
+    if (!route.static && !route.hasOwnProperty("method")) {
+      route.method = HTTPController.METHODS.GET;
+    }
+
+    if (
+      !route.static &&
+      route.hasOwnProperty("method") &&
+      typeof route.method !== "string" &&
+      !Array.isArray(route.method)
+    ) {
+      throw new Error("Route methods can be a type of string or array");
+    }
+
+    if (!route.static && route.hasOwnProperty("method")) {
+      const methods = HTTPController.AVAILABLE_METHODS.map((method) => method.toLowerCase());
+      if (typeof route.method === "string" && methods.indexOf(route.method) === -1) {
+        throw new Error(`Method ${route.method} not found`);
+      }
+
+      if (Array.isArray(route.method)) {
+        const methodsLength = route.method.length;
+        if (methodsLength === 0) {
+          route.method = HTTPController.METHODS.GET;
+        } else {
+          for (let i = 0; i < methodsLength; i++) {
+            if (methods.indexOf(route.method[i]) === -1) {
+              throw new Error(`Method ${route.method} not found`);
+            }
+          }
+        }
+      }
+    }
+
+    if (
+      route.static &&
+      route.hasOwnProperty("method") &&
+      route.method !== HTTPController.METHODS.GET
+    ) {
+      throw new Error("Static routes can be a GET only method");
+    }
+
+    if (route.static && !route.hasOwnProperty("method")) {
       route.method = HTTPController.METHODS.GET;
     }
 
@@ -141,8 +182,10 @@ class HTTPController {
       if (
         match &&
         (req.__METHOD === HTTPController.METHODS.HEAD ||
-          this.routes[i].method === req.__METHOD ||
-          this.routes[i].method === HTTPController.METHODS.ANY)
+          (typeof this.routes[i].method === "string" &&
+            this.routes[i].method === req.__METHOD) ||
+          (Array.isArray(this.routes[i].method) &&
+            this.routes[i].method.indexOf(req.__METHOD) !== -1))
       ) {
         req.__ROUTE = this.routes[i];
         req.__PARAMS = { ...match.params };
@@ -261,7 +304,11 @@ class HTTPController {
   addCORS(res, cors) {
     if (cors) {
       res.writeHeader("Access-Control-Allow-Origin", cors);
-      res.writeHeader(`Access-Control-Allow-Methods: ${ HTTPController.AVAILABLE_METHODS }`);
+      res.writeHeader(
+        `Access-Control-Allow-Methods: ${HTTPController.AVAILABLE_METHODS.join(
+          ", "
+        )}`
+      );
     }
   }
 
@@ -434,17 +481,16 @@ class HTTPController {
       HEAD: "head",
       GET: "get",
       POST: "post",
-      ANY: "any",
       OPTIONS: "options",
     };
   }
 
-  static get AVAILABLE_METHODS() {
-    return Object.keys(HTTPController.METHODS).filter((m) => m !== "ANY").join(", ");
+  static get OPTIONS_HEADER() {
+    return ["Allow", HTTPController.AVAILABLE_METHODS.join(", ")];
   }
 
-  static get OPTIONS_HEADER() {
-    return ["Allow", this.AVAILABLE_METHODS];
+  static get AVAILABLE_METHODS() {
+    return Object.keys(HTTPController.METHODS);
   }
 
   static get STATUSES() {

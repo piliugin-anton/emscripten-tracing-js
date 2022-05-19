@@ -6,11 +6,8 @@ class Tracing {
     this.wsp = null;
     this.rws = null;
     this.queue = [];
-    this.isSending = false;
     this.timeout = null;
-    this.interval = null;
     this.SEND_TIMEOUT = 500;
-    this.SEND_INTERVAL = 1000;
     this.DISCONNECT_TIMEOUT = 1000;
   }
 
@@ -21,8 +18,12 @@ class Tracing {
   connect(wsUrl) {
     this.wsp = new WebSocketAsPromised(wsUrl, {
       createWebSocket: (url) => {
-        this.rws = new ReconnectingWebSocket(url);
-        this.rws.onopen = () => this._scheduleSend();
+        if (this.rws === null) {
+          this.rws = new ReconnectingWebSocket(url);
+          this.rws.debug = true;
+          this.rws.maxReconnectInterval = 1000;
+          this.rws.onopen = () => this._scheduleSend();
+        }
         return this.rws;
       },
       packMessage: (data) => JSON.stringify(data),
@@ -32,16 +33,12 @@ class Tracing {
       extractRequestId: (data) => data && data.id,
     });
 
-    this.interval = setInterval(this._sendQueue.bind(this), this.SEND_INTERVAL);
-
     return this.wsp.open();
   }
 
   disconnect() {
     if (this.queue.length > 0)
       return setTimeout(this.disconnect, this.DISCONNECT_TIMEOUT);
-
-    clearInterval(this.interval);
 
     if (this.wsp.isOpened) return this.wsp.close();
 
@@ -59,11 +56,12 @@ class Tracing {
   }
 
   _sendQueue() {
-    if (this.isClosed || this.queue.length === 0 || this.isSending) return;
-
+    if (this.queue.length === 0) return;
+    console.log("Sending queue...");
     this.wsp
       .sendRequest(this.queue)
       .then((data) => {
+        console.log("Queue sent, got response...");
         const { ids } = data;
         this.queue = this.queue.filter((msg) => !ids.includes(msg.id));
       })
