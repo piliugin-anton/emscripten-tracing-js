@@ -1,11 +1,10 @@
 const uWS = require("uWebSockets.js");
+const WSController = require("./WSController");
 const HTTPController = require("./HTTPController.js");
 const TemplateEngine = require("./TemplateEngine.js");
-const CSVFile = require("./CSVFile");
 
 const port = 5000;
 let serverToken = null;
-const wsBuffer = [];
 
 const shutdown = (event) => {
   if (serverToken) {
@@ -18,6 +17,8 @@ const shutdown = (event) => {
 process.on("SIGINT", () => shutdown("SIGINT"));
 process.on("SIGTERM", () => shutdown("SIGTERM"));
 process.on("SIGUSR2", () => shutdown("SIGUSR2"));
+
+const WS = new WSController({ compression: uWS.SHARED_COMPRESSOR });
 
 const Templates = new TemplateEngine();
 const HTTP = new HTTPController({
@@ -67,60 +68,7 @@ const HTTP = new HTTPController({
 uWS
   .App()
   //.addServerName("localhost")
-  .ws("/", {
-    /* There are many common helper features */
-    idleTimeout: 24,
-    maxBackpressure: 1024 * 1024,
-    maxPayloadLength: 16 * 1024 * 1024,
-    compression: uWS.SHARED_COMPRESSOR,
-    sendPingsAutomatically: true,
-
-    upgrade: (res, req, context) => {
-      res.upgrade(
-        {
-          url: `${req.getUrl()}?${req.getQuery()}`,
-        },
-        /* Spell these correctly */
-        req.getHeader("sec-websocket-key"),
-        req.getHeader("sec-websocket-protocol"),
-        req.getHeader("sec-websocket-extensions"),
-        context
-      );
-    },
-
-    /* For brevity we skip the other events (upgrade, open, ping, pong, close) */
-    message: (ws, message, isBinary) => {
-      const url = new URL(ws.url, "http://0.0.0.0");
-      const params = url.searchParams;
-      const version = params.get("version");
-      const session = params.get("session");
-
-      if (!version || !session) return;
-
-      try {
-        // Compress message?
-        const compressed = true;
-        // Get JSON from message
-        const { traces, length } = JSON.parse(Buffer.from(message));
-        if (traces && length) {
-          // Do the work with traces
-
-          const msg = length.toString();
-          if (ws.send(msg, isBinary, compressed) !== 1) {
-            return wsBuffer.push({ msg, isBinary, compressed });
-          }
-        }
-      } catch (ex) {}
-    },
-    drain: (ws) => {
-      if (ws.getBufferedAmount() === 0 && wsBuffer.length) {
-        const { msg, isBinary, compressed } = wsBuffer[0];
-        if (ws.send(msg, isBinary, compressed) === 1) {
-          wsBuffer.splice(0, 1);
-        }
-      }
-    },
-  })
+  .ws(...WS.attach())
   .any(...HTTP.attach())
   .listen(port, (token) => {
     if (token) {

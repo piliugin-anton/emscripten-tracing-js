@@ -65,3 +65,5 @@ class CSVFile {
     });
   }
 }
+
+module.exports = CSVFile;
