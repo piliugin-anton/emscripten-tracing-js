@@ -1,48 +1,46 @@
-import WebSocketAsPromised from "websocket-as-promised";
 import ReconnectingWebSocket from "reconnecting-websocket";
 
 class Tracing {
   constructor() {
-    this.wsp = null;
-    this.rws = null;
+    this.ws = null;
     this.queue = [];
     this.timeout = null;
+    this.wsURL = null;
     this.SEND_TIMEOUT = 500;
     this.DISCONNECT_TIMEOUT = 1000;
   }
 
-  get isClosed() {
-    return this.wsp.isClosed || this.rws.CLOSED;
+  get isConnected() {
+    return this.ws && this.ws.readyState === this.ws.OPEN;
   }
 
   connect(wsUrl) {
-    this.wsp = new WebSocketAsPromised(wsUrl, {
-      createWebSocket: (url) => {
-        if (this.rws === null) {
-          this.rws = new ReconnectingWebSocket(url);
-          this.rws.debug = true;
-          this.rws.maxReconnectInterval = 1000;
-          this.rws.onopen = () => this._scheduleSend();
-        }
-        return this.rws;
-      },
-      packMessage: (data) => JSON.stringify(data),
-      unpackMessage: (data) => JSON.parse(data),
-      attachRequestId: (data, requestId) =>
-        Object.assign({ id: requestId }, data), // attach requestId to message as `id` field
-      extractRequestId: (data) => data && data.id,
+    if (this.ws && this.wsURL !== wsUrl && this.isConnected) {
+      this.ws.close();
+    }
+
+    this.wsURL = wsUrl;
+
+    this.ws = new ReconnectingWebSocket(this.wsURL, "emscripten-trace", {
+      maxRetries: Infinity,
+      connectionTimeout: 10000,
+      minUptime: 1000,
+      maxReconnectInterval: 1000,
+      reconnectionDelayGrowFactor: 1,
+      debug: true
     });
 
-    return this.wsp.open();
+    this.ws.onmessage = (e) => this._onMessage(e.data);
   }
 
   disconnect() {
-    if (this.queue.length > 0)
+    console.log("disconnect!!!");
+    if (this.queue.length > 0) {
+      this._scheduleSend(1);
       return setTimeout(this.disconnect, this.DISCONNECT_TIMEOUT);
+    }
 
-    if (this.wsp.isOpened) return this.wsp.close();
-
-    return Promise.reject("WebSocket is not connected");
+    if (isConnected) return this.ws.close();
   }
 
   send(message) {
@@ -50,25 +48,28 @@ class Tracing {
     this._scheduleSend();
   }
 
-  _scheduleSend() {
+  _onMessage(data) {
+    console.log("Got response");
+    try {
+      const ids = JSON.parse(data);
+      if (ids.length) this.queue = this.queue.filter((msg) => !ids.includes(msg.id));
+    } catch(ex) {
+      console.error("Receieved message is not a JSON string");
+    }
+  }
+
+  _scheduleSend(timeout) {
     clearTimeout(this.timeout);
-    this.timeout = setTimeout(this._sendQueue.bind(this), this.SEND_TIMEOUT);
+    this.timeout = setTimeout(this._sendQueue.bind(this), timeout || this.SEND_TIMEOUT);
   }
 
   _sendQueue() {
     if (this.queue.length === 0) return;
+
+    if (!this.isConnected) return this._scheduleSend();
+
     console.log("Sending queue...");
-    this.wsp
-      .sendRequest(this.queue)
-      .then((data) => {
-        console.log("Queue sent, got response...");
-        const { ids } = data;
-        this.queue = this.queue.filter((msg) => !ids.includes(msg.id));
-      })
-      .catch((ex) => console.error(ex))
-      .finally(() => {
-        this.isSending = false;
-      });
+    this.ws.send(JSON.stringify(this.queue));
   }
 
   _generateID() {

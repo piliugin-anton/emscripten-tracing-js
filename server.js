@@ -61,38 +61,52 @@ const HTTP = new HTTPController({
 
 uWS
   .App()
+  //.addServerName("localhost")
   .ws("/", {
     /* There are many common helper features */
-    idleTimeout: 0,
+    idleTimeout: 24,
     maxBackpressure: 1024 * 1024,
     maxPayloadLength: 16 * 1024 * 1024,
     compression: uWS.SHARED_COMPRESSOR,
     sendPingsAutomatically: false,
 
+    upgrade: (res, req, context) => {
+      res.upgrade({
+        url: `${req.getUrl()}?${req.getQuery()}`
+      },
+      /* Spell these correctly */
+      req.getHeader('sec-websocket-key'),
+      req.getHeader('sec-websocket-protocol'),
+      req.getHeader('sec-websocket-extensions'),
+      context);
+    },
+
     /* For brevity we skip the other events (upgrade, open, ping, pong, close) */
     message: (ws, message, isBinary) => {
-      /* You can do app.publish('sensors/home/temperature', '22C') kind of pub/sub as well */
-      /* Here we echo the message back, using compression if available */
+      const url = new URL(ws.url, "http://0.0.0.0");
+      const params = url.searchParams;
+      const version = params.get("version");
+      const session = params.get("session");
+      
+      if (!version || !session) return;
 
+      // Compress message?
+      const compressed = true;
+      // Get JSON from message
       const json = JSON.parse(Buffer.from(message));
 
       const messages = Object.keys(json)
-        .map((key) => json[key])
-        .filter((msg) => typeof msg === "object");
+        .map((key) => json[key]);
+
+      
 
       const ids = messages.map((msg) => msg.id);
-
-      const response = {
-        id: json.id,
-        ids,
-      };
-
-      const msg = JSON.stringify(response);
+      const msg = JSON.stringify(ids);
 
       if (ws.getBufferedAmount() === 0) {
-        ws.send(msg, isBinary, false);
+        return ws.send(msg, isBinary, compressed);
       } else {
-        wsBuffer.push({ msg, isBinary, compressed: false });
+        return wsBuffer.push({ msg, isBinary, compressed });
       }
     },
     drain: (ws) => {
