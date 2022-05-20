@@ -5,12 +5,13 @@ class WSController {
   constructor(options = {}) {
     this.compression = options.compression || 0;
     this.wsBuffer = [];
-    this.openSquareBrace = Buffer.from("[");
-    this.closeSquareBrace = Buffer.from("]");
+    this.encoder = new TextEncoder();
+    this.openSquareBrace = 91;
+    this.closeSquareBrace = 93;
   }
 
-  get WShandler() {
-    return {
+  attach() {
+    return ["/", {
       /* There are many common helper features */
       idleTimeout: 24,
       maxBackpressure: 1024 * 1024,
@@ -43,23 +44,20 @@ class WSController {
         try {
           // Compress message?
           const compressed = true;
-          // Buffer
-          const buffer = Buffer.from(message);
-          const openSquareBrace = Buffer.from("[");
-          const closeSquareBrace = Buffer.from("]");
-          const firstByte = buffer.slice(0, 1);
-          const lastByte = buffer.slice(buffer.size - 1, 1);
+          // ArrayBuffer
+          
+          const firstSlice = new Uint8Array(message.slice(0, 1));
+          const firstByte = firstSlice[0];
+          const lastSlice = new Uint8Array(message.slice(message.byteLength - 1));
+          const lastByte = lastSlice[0];
 
-          if (
-            Buffer.compare(openSquareBrace, firstByte) === 0 &&
-            Buffer.compare(closeSquareBrace, lastByte) === 0
-          ) {
+          if (firstByte === this.openSquareBrace && lastByte === this.closeSquareBrace) {
             // Do the work with traces
-            const data = buffer.slice(1, buffer.size - 1);
+            const data = Buffer.from(message.slice(1, message.byteLength - 1));
             const filename = path.join(
               __dirname,
               "data",
-              `${session}.${version}.json`
+              `${session}.${version}.rawson`
             );
             fs.promises
               .appendFile(filename, data)
@@ -84,11 +82,7 @@ class WSController {
           }
         }
       },
-    };
-  }
-
-  attach() {
-    return ["/", this.WShandler];
+    }];
   }
 }
 
