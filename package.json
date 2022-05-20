@@ -14,7 +14,6 @@
   "license": "ISC",
   "dependencies": {
     "eta": "^1.12.3",
-    "fast-csv": "^4.3.6",
     "mime": "^3.0.0",
     "path-to-regexp": "^6.2.1",
     "proper-lockfile": "^4.1.2",

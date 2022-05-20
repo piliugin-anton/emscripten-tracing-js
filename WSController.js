@@ -1,9 +1,12 @@
-const CSVFile = require("./CSVFile");
+const fs = require("fs");
+const path = require("path");
 
 class WSController {
   constructor(options = {}) {
     this.compression = options.compression || 0;
     this.wsBuffer = [];
+    this.openSquareBrace = Buffer.from("[");
+    this.closeSquareBrace = Buffer.from("]");
   }
 
   get WShandler() {
@@ -40,21 +43,42 @@ class WSController {
         try {
           // Compress message?
           const compressed = true;
-          // Get JSON from message
-          const { traces, length } = JSON.parse(Buffer.from(message));
-          if (traces && length) {
-            // Do the work with traces
+          // Buffer
+          const buffer = Buffer.from(message);
+          const openSquareBrace = Buffer.from("[");
+          const closeSquareBrace = Buffer.from("]");
+          const firstByte = buffer.slice(0, 1);
+          const lastByte = buffer.slice(buffer.size - 1, 1);
 
-            const msg = length.toString();
-            if (ws.send(msg, isBinary, compressed) !== 1) {
-              return this.wsBuffer.push({ msg, isBinary, compressed });
-            }
+          if (
+            Buffer.compare(openSquareBrace, firstByte) === 0 &&
+            Buffer.compare(closeSquareBrace, lastByte) === 0
+          ) {
+            // Do the work with traces
+            const data = buffer.slice(1, buffer.size - 1);
+            const filename = path.join(
+              __dirname,
+              "data",
+              `${session}.${version}.json`
+            );
+            fs.promises
+              .appendFile(filename, data)
+              .then(() => {
+                // Response
+                if (ws.send("1", isBinary, compressed) !== 1) {
+                  return this.wsBuffer.push({ msg, isBinary, compressed });
+                }
+              })
+              .catch((ex) => console.log(ex));
+          } else {
+            return;
           }
         } catch (ex) {}
       },
       drain: (ws) => {
-        if (ws.getBufferedAmount() === 0 && this.wsBuffer.length) {
+        if (this.wsBuffer.length) {
           const { msg, isBinary, compressed } = this.wsBuffer[0];
+
           if (ws.send(msg, isBinary, compressed) === 1) {
             this.wsBuffer.splice(0, 1);
           }

@@ -51,8 +51,8 @@ class Tracing {
     this._scheduleSend();
   }
 
-  _onMessage(length) {
-    this.queue.splice(0, Number(length));
+  _onMessage(message) {
+    if (message === "1") this.queue = [];
   }
 
   _scheduleSend(timeout) {
@@ -68,7 +68,7 @@ class Tracing {
 
     if (!this.isConnected) return this._scheduleSend();
 
-    this.ws.send(JSON.stringify({ traces: this.queue, length: this.queue.length }));
+    this.ws.send(JSON.stringify(this.queue));
   }
 }
 
