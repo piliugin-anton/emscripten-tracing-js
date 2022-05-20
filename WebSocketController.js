@@ -5,7 +5,7 @@ class WebSocketController {
   constructor(options = {}) {
     this.compression = options.compression || 0;
     this.wsBuffer = [];
-    this.dataDir = path.join(__dirname, "data");
+    this.dataDir = options.dir || path.join(__dirname, "data");
 
     if (!fs.existsSync(this.dataDir)) {
       fs.mkdirSync(this.dataDir);

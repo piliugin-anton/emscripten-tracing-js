@@ -1,4 +1,6 @@
 const uWS = require("uWebSockets.js");
+const fs = require("fs");
+const path = require("path");
 const WebSocketController = require("./WebSocketController");
 const HTTPController = require("./HTTPController.js");
 const TemplateEngine = require("./TemplateEngine.js");
@@ -6,19 +8,40 @@ const TemplateEngine = require("./TemplateEngine.js");
 const port = 5000;
 let serverToken = null;
 
-const shutdown = (event) => {
+const dataDir = path.join(__dirname, "data");
+
+const WS = new WebSocketController({
+  compression: uWS.SHARED_COMPRESSOR,
+  dir: dataDir,
+});
+
+const shutdown = (event, dir) => {
   if (serverToken) {
     console.log("Shutting down the server...");
     uWS.us_listen_socket_close(serverToken);
   }
   console.log(`[${event}] Removing files...`);
+
+  fs.readdir(dir, { withFileTypes: true }, (err, files) => {
+    if (err) console.log(err);
+    else {
+      files.forEach((file) => {
+        if (file.isFile() && file.name.endsWith(".emscripten")) {
+          fs.unlink(path.join(dir, file.name), (err) => {
+            if (err) console.log(`Can't delete ${file.name}`);
+            else {
+              console.log(`File ${file.name} deleted successfully!`);
+            }
+          })
+        }
+      });
+    }
+  });
 };
 
-process.on("SIGINT", () => shutdown("SIGINT"));
-process.on("SIGTERM", () => shutdown("SIGTERM"));
-process.on("SIGUSR2", () => shutdown("SIGUSR2"));
-
-const WS = new WebSocketController({ compression: uWS.SHARED_COMPRESSOR });
+process.on("SIGINT", () => shutdown("SIGINT", dataDir));
+process.on("SIGTERM", () => shutdown("SIGTERM", dataDir));
+process.on("SIGUSR2", () => shutdown("SIGUSR2", dataDir));
 
 const Templates = new TemplateEngine();
 const HTTP = new HTTPController({
