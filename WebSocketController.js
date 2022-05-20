@@ -7,8 +7,8 @@ class WebSocketController {
     this.wsBuffer = [];
     this.dataDir = path.join(__dirname, "data");
 
-    if (!fs.existsSync(dir)) {
-      fs.mkdirSync(dir);
+    if (!fs.existsSync(this.dataDir)) {
+      fs.mkdirSync(this.dataDir);
     }
   }
 
