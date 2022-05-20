@@ -68,7 +68,7 @@ class Tracing {
 
     if (!this.isConnected) return this._scheduleSend();
 
-    this.ws.send(JSON.stringify(this.queue));
+    this.ws.send("!emscripten" + this.queue.join("\n"));
   }
 }
 
