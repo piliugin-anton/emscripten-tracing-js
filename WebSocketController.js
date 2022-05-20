@@ -13,7 +13,7 @@ class WebSocketController {
   }
 
   isEmscriptenData(slice) {
-    const array = Uint8Array(slice);
+    const array = new Uint8Array(slice);
     const emscripten = [33, 101, 109, 115, 99, 114, 105, 112, 116, 101, 110];
 
     for (let i = 10; i > -1; i--) {
