@@ -1,5 +1,5 @@
 const uWS = require("uWebSockets.js");
-const WSController = require("./WSController");
+const WebSocketController = require("./WebSocketController");
 const HTTPController = require("./HTTPController.js");
 const TemplateEngine = require("./TemplateEngine.js");
 
@@ -18,7 +18,7 @@ process.on("SIGINT", () => shutdown("SIGINT"));
 process.on("SIGTERM", () => shutdown("SIGTERM"));
 process.on("SIGUSR2", () => shutdown("SIGUSR2"));
 
-const WS = new WSController({ compression: uWS.SHARED_COMPRESSOR });
+const WS = new WebSocketController({ compression: uWS.SHARED_COMPRESSOR });
 
 const Templates = new TemplateEngine();
 const HTTP = new HTTPController({
@@ -65,16 +65,16 @@ const HTTP = new HTTPController({
   },
 ]);
 
-uWS
-  .App()
-  //.addServerName("localhost")
-  .ws(...WS.attach())
-  .any(...HTTP.attach())
-  .listen(port, (token) => {
-    if (token) {
-      console.log("Listening to port " + port);
-      serverToken = token;
-    } else {
-      console.log("Failed to listen to port " + port);
-    }
-  });
+const App = uWS.App();
+
+WS.attachTo(App);
+HTTP.attachTo(App);
+
+App.listen(port, (token) => {
+  if (token) {
+    console.log("Listening to port " + port);
+    serverToken = token;
+  } else {
+    console.log("Failed to listen to port " + port);
+  }
+});

@@ -1,17 +1,30 @@
 const fs = require("fs");
 const path = require("path");
 
-class WSController {
+class WebSocketController {
   constructor(options = {}) {
     this.compression = options.compression || 0;
     this.wsBuffer = [];
-    this.encoder = new TextEncoder();
-    this.openSquareBrace = 91;
-    this.closeSquareBrace = 93;
+    this.dataDir = path.join(__dirname, "data");
+
+    if (!fs.existsSync(dir)) {
+      fs.mkdirSync(dir);
+    }
   }
 
-  attach() {
-    return ["/", {
+  isEmscriptenData(slice) {
+    const array = Uint8Array(slice);
+    const emscripten = [33, 101, 109, 115, 99, 114, 105, 112, 116, 101, 110];
+
+    for (let i = 10; i > -1; i--) {
+      if (emscripten[i] !== array[i]) return false;
+    }
+
+    return true;
+  }
+
+  attachTo(App) {
+    App.ws("/", {
       /* There are many common helper features */
       idleTimeout: 24,
       maxBackpressure: 1024 * 1024,
@@ -41,37 +54,27 @@ class WSController {
 
         if (!version || !session) return;
 
-        try {
-          // Compress message?
-          const compressed = true;
-          // ArrayBuffer
-          
-          const firstSlice = new Uint8Array(message.slice(0, 1));
-          const firstByte = firstSlice[0];
-          const lastSlice = new Uint8Array(message.slice(message.byteLength - 1));
-          const lastByte = lastSlice[0];
+        // Compress message?
+        const compressed = true;
 
-          if (firstByte === this.openSquareBrace && lastByte === this.closeSquareBrace) {
-            // Do the work with traces
-            const data = Buffer.from(message.slice(1, message.byteLength - 1));
-            const filename = path.join(
-              __dirname,
-              "data",
-              `${session}.${version}.rawson`
-            );
-            fs.promises
-              .appendFile(filename, data)
-              .then(() => {
-                // Response
-                if (ws.send("1", isBinary, compressed) !== 1) {
-                  return this.wsBuffer.push({ msg, isBinary, compressed });
-                }
-              })
-              .catch((ex) => console.log(ex));
-          } else {
-            return;
-          }
-        } catch (ex) {}
+        // Emscripten probe
+        const probe = message.slice(0, 11);
+
+        if (this.isEmscriptenData(probe)) {
+          const data = Buffer.from(message.slice(11, message.byteLength));
+
+          const filename = path.join(this.dataDir, `${session}.${version}.emscripten`);
+
+          fs.promises
+            .appendFile(filename, data)
+            .then(() => {
+              // Response
+              if (ws.send("1", isBinary, compressed) !== 1) {
+                return this.wsBuffer.push({ msg, isBinary, compressed });
+              }
+            })
+            .catch((ex) => console.log(ex));
+        }
       },
       drain: (ws) => {
         if (this.wsBuffer.length) {
@@ -82,8 +85,8 @@ class WSController {
           }
         }
       },
-    }];
+    });
   }
 }
 
-module.exports = WSController;
+module.exports = WebSocketController;

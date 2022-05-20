@@ -151,8 +151,8 @@ class HTTPController {
     return this;
   }
 
-  attach() {
-    return ["/*", this.handleRequest];
+  attachTo(App) {
+    App.any("/*", this.handleRequest);
   }
 
   writeHeaders(res, headers) {
