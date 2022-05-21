@@ -24,7 +24,7 @@ module.exports = (options) => {
     bus.removeAllListeners("restart");
 
     // Place our listener in first position
-    bus.on("restart", function (files) {
+    bus.on("restart", (files) => {
       if (!options.quiet) nodemonLog("Running tasks...");
 
       if (typeof options.tasks === "function") run(options.tasks(files));
@@ -67,8 +67,8 @@ module.exports = (options) => {
     if (event === "change") {
       script.changeTasks = tasks;
     } else {
-      for (var i = 0; i < tasks.length; i++) {
-        void (function (tasks) {
+      for (let i = 0; i < tasks.length; i++) {
+        ((tasks) => {
           if (tasks instanceof Function) {
             originalOn(event, tasks);
           } else {
@@ -99,7 +99,7 @@ module.exports = (options) => {
       process.platform === "win32" ? "gulp.cmd" : "gulp"
     );
 
-    var options = { stdio: [0, 1, 2] };
+    const options = { stdio: [0, 1, 2] };
     if (process.platform === "win32") options.shell = true;
 
     cp.spawnSync(gulpCmd, task, options);
@@ -110,14 +110,4 @@ module.exports = (options) => {
 
 const nodemonLog = (message) => {
   console.log("[" + new Date().toString().split(" ")[4].gray + "] " + message);
-};
-
-const debounce = (func, timeout = 100) => {
-  let timer;
-  return (...args) => {
-    clearTimeout(timer);
-    timer = setTimeout(() => {
-      func.apply(this, args);
-    }, timeout);
-  };
 };

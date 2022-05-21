@@ -99,6 +99,10 @@ gulp.task("templates", () => {
     .pipe(gulp.dest(staticDir));
 });
 
+if (process.env.NODE_ENV === "development") {
+  gulp.watch([templatesGlob, style], gulp.series("templates"));
+}
+
 gulp.task("server", (done) => {
   const server = nodemon({
     script: "server.js",
@@ -106,9 +110,8 @@ gulp.task("server", (done) => {
       NODE_ENV: "development",
     },
     ext: "js json eta",
-    ignore: ["gulpfile.js", "package.json", "package-lock.json", "./www/static/bundle.min.js", "./www/static/bundle.min.css"],
-    watch: ["./server.js", "./server/**/*", workerFilePath, templatesGlob, style],
-    tasks: ["templates"],
+    ignore: ["./gulpfile.js", "./package.json", "./package-lock.json"],
+    watch: ["./server.js", "./server/**/*", templatesGlob],
     delay: 2500,
     done: done,
   });
@@ -121,9 +124,6 @@ gulp.task("server", (done) => {
       console.error("Server has crashed! Restarting in 3 sec");
       server.emit("restart", 3000);
     });
-
-  //gulp.watch(workerFilePath, gulp.series("worker.js"));
-  //gulp.watch([templatesGlob, style], gulp.series("templates"));
 });
 
 const defaultTasks = ["worker.js", "templates"];

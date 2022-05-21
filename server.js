@@ -91,7 +91,7 @@ const HTTP = new HTTPController({
 
 const App = uWS.App();
 
-WS.attachTo(App);
+//WS.attachTo(App);
 HTTP.attachTo(App);
 
 App.listen(port, (token) => {
