@@ -46,6 +46,10 @@ class HTTPController {
       );
     }
 
+    if (this.hasRoute(route.pattern)) {
+      throw new Error(`Route with pattern ${route.pattern} already exists!`);
+    }
+
     if (
       !route.static &&
       !route.redirect &&
@@ -119,10 +123,6 @@ class HTTPController {
 
     if (route.hasOwnProperty("cors") && typeof route.cors !== "string") {
       throw new Error("CORS must be a string type, ex: '*'");
-    }
-
-    if (this.hasRoute(route.pattern)) {
-      throw new Error(`Route with pattern ${route.pattern} already exists!`);
     }
 
     route.match = match(route.pattern, {
