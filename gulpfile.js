@@ -52,6 +52,10 @@ gulp.task("worker.js", () => {
     .pipe(gulp.dest(__dirname));
 });
 
+if (process.env.NODE_ENV === "development") {
+  gulp.watch(workerFilePath, gulp.series("worker.js"));
+}
+
 gulp.task("templates", () => {
   return gulp
     .src(resources)
