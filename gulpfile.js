@@ -7,7 +7,6 @@ const source = require("vinyl-source-stream");
 const buffer = require("vinyl-buffer");
 const babelMinify = require("gulp-babel-minify");
 const minify = require("gulp-minify");
-//const nodemon = require("gulp-nodemon");
 const nodemon = require("./helpers/gulp-nodemon");
 const stripJS = require("gulp-strip-comments");
 const cleanCSS = require("gulp-clean-css");
@@ -19,7 +18,7 @@ const workerFilePath = path.join(__dirname, "src", "worker.js");
 const templatesGlob = path.join(__dirname, "templates", "**/*");
 const style = path.join(__dirname, "www", "static", "style.css");
 
-gulp.task("worker.js", function () {
+gulp.task("worker.js", () => {
   const browserified = browserify({
     entries: workerFilePath,
     debug: false,
@@ -52,7 +51,7 @@ gulp.task("worker.js", function () {
     .pipe(gulp.dest(__dirname));
 });
 
-gulp.task("templates", function () {
+gulp.task("templates", () => {
   return gulp
     .src(resources)
     .pipe(gif("**/*.js", concat("bundle.min.js")))
@@ -95,7 +94,7 @@ gulp.task("templates", function () {
     .pipe(gulp.dest("static"));
 });
 
-gulp.task("develop", function (done) {
+gulp.task("develop", (done) => {
   const server = nodemon({
     script: "server.js",
     env: {
@@ -108,12 +107,12 @@ gulp.task("develop", function (done) {
   });
 
   server
-    .on("restart", function () {
+    .on("restart", () => {
       console.log("Server restarted!");
     })
-    .on("crash", function () {
+    .on("crash", () => {
       console.error("Server has crashed! Restarting in 3 sec");
-      server.emit("restart", 3);
+      server.emit("restart", 3000);
     });
 
   gulp.watch(workerFilePath, gulp.series("worker.js"));
@@ -122,8 +121,7 @@ gulp.task("develop", function (done) {
 
 const defaultTasks = ["worker.js", "templates"];
 
-const isDev = process.env.NODE_ENV === "development";
-if (isDev) {
+if (process.env.NODE_ENV === "development") {
   defaultTasks.push("develop");
 }
 

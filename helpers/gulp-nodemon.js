@@ -1,4 +1,5 @@
 const cp = require("child_process");
+const colors = require("colors");
 const bus = require("nodemon/lib/utils/bus");
 
 module.exports = (options) => {
@@ -22,6 +23,7 @@ module.exports = (options) => {
 
     // Place our listener in first position
     bus.on("restart", (files) => {
+      console.log("RESTART", files);
       if (!options.quiet) nodemonLog("running tasks...");
 
       if (typeof options.tasks === "function") run(options.tasks(files));

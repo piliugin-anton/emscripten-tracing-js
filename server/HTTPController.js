@@ -238,7 +238,7 @@ class HTTPController {
         return this.handleError(404, res, requestObject, cors, true);
 
       const stat = fs.statSync(absoluteFilePath, {
-        bigint: true,
+        bigint: false,
       });
 
       // Damn! It's not a file (it's a directory)
