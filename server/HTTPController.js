@@ -39,10 +39,10 @@ class HTTPController {
   addRoute(route = {}) {
     if (
       typeof route.pattern !== "string" ||
-      (!route.static && !route.redirect && typeof route.template !== "string")
+      (!route.static && !route.redirect && !route.json && typeof route.template !== "string")
     ) {
       throw new Error(
-        "Route must have a pattern. Non-static route must have a template."
+        "Route must have a pattern. Non-static route must have a template or should have an option 'json' set to 'true' (JSON API mode)"
       );
     }
 

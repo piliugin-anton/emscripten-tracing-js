@@ -79,6 +79,14 @@ const HTTP = new HTTPController({
     },
   },
   {
+    pattern: "/trace",
+    method: HTTPController.METHODS.POST,
+    json: true,
+    handler: (request) => {
+      
+    }
+  },
+  {
     pattern: "/worker.js",
     static: true,
     cors: "*",
