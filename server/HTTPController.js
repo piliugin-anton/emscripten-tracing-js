@@ -19,7 +19,7 @@ class HTTPController {
       throw new Error("CORS must be a string type, ex: '*'");
     }
 
-    this.rootDir = options.rootDir || path.join(__dirname, "..");
+    this.rootDir = options.rootDir || path.join(__dirname, "..", "www");
     this.cors = options.cors;
     this.errorHandler =
       typeof options.errorHandler === "function" ? options.errorHandler : null;

@@ -47,6 +47,7 @@ const Templates = new TemplateEngine({
 
 const HTTP = new HTTPController({
   templateEngine: Templates,
+  rootDir: path.join(__dirname, "www"),
   errorHandler: (request, code) => {
     // const { url, method, params, query } = request;
     const errorMessages = {
@@ -80,13 +81,11 @@ const HTTP = new HTTPController({
   {
     pattern: "/worker.js",
     static: true,
-    dir: path.join(__dirname, "www"),
     cors: "*",
   },
   {
     pattern: "/static/(.+)",
     static: true,
-    dir: path.join(__dirname, "www"),
   },
 ]);
 
