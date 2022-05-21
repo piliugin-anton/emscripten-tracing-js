@@ -316,7 +316,7 @@ class HTTPController {
   handleOptionsRequest(res, req, cors) {
     res
       .writeStatus(HTTPController.STATUSES[200])
-      .writeHeader("Allow", this.getMethodsString(req.__METHOD));
+      .writeHeader("Allow", this.getMethodsString(req.__ROUTE.method));
 
     this.addCORS(res, req, cors);
 
@@ -361,7 +361,7 @@ class HTTPController {
     if (cors) {
       res.writeHeader("Access-Control-Allow-Origin", cors);
       res.writeHeader(
-        `Access-Control-Allow-Methods: ${this.getMethodsString(req.__METHOD)}`
+        `Access-Control-Allow-Methods: ${this.getMethodsString(req.__ROUTE.method)}`
       );
     }
   }
