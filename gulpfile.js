@@ -1,24 +1,26 @@
-var gulp = require("gulp");
-var gif = require("gulp-if");
-var concat = require("gulp-concat");
-var browserify = require("browserify");
-var babelify = require("babelify");
-var source = require("vinyl-source-stream");
-var buffer = require("vinyl-buffer");
-var babelMinify = require("gulp-babel-minify");
-var minify = require("gulp-minify");
-var nodemon = require("gulp-nodemon");
-var stripJS = require("gulp-strip-comments");
-var cleanCSS = require("gulp-clean-css");
-var path = require("path");
-var resources = require("./templates/resources");
+const gulp = require("gulp");
+const gif = require("gulp-if");
+const concat = require("gulp-concat");
+const browserify = require("browserify");
+const babelify = require("babelify");
+const source = require("vinyl-source-stream");
+const buffer = require("vinyl-buffer");
+const babelMinify = require("gulp-babel-minify");
+const minify = require("gulp-minify");
+//const nodemon = require("gulp-nodemon");
+const nodemon = require("./helpers/gulp-nodemon");
+const stripJS = require("gulp-strip-comments");
+const cleanCSS = require("gulp-clean-css");
+const path = require("path");
+let res = require("./templates/resources");
+const resources = res.map((r) => path.join("www", r));
 
-var workerFilePath = path.join(__dirname, "src", "worker.js");
-var templatesGlob = path.join(__dirname, "templates", "**/*");
-var style = path.join(__dirname, "www", "static", "style.css");
+const workerFilePath = path.join(__dirname, "src", "worker.js");
+const templatesGlob = path.join(__dirname, "templates", "**/*");
+const style = path.join(__dirname, "www", "static", "style.css");
 
 gulp.task("worker.js", function () {
-  var browserified = browserify({
+  const browserified = browserify({
     entries: workerFilePath,
     debug: false,
     sourceMaps: false,
@@ -94,7 +96,7 @@ gulp.task("templates", function () {
 });
 
 gulp.task("develop", function (done) {
-  var server = nodemon({
+  const server = nodemon({
     script: "server.js",
     env: {
       NODE_ENV: "development",
@@ -118,9 +120,9 @@ gulp.task("develop", function (done) {
   gulp.watch([templatesGlob, style], gulp.series("templates"));
 });
 
-var defaultTasks = ["worker.js", "templates"];
+const defaultTasks = ["worker.js", "templates"];
 
-var isDev = process.env.NODE_ENV === "development";
+const isDev = process.env.NODE_ENV === "development";
 if (isDev) {
   defaultTasks.push("develop");
 }
