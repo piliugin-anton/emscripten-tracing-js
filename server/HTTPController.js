@@ -66,7 +66,11 @@ class HTTPController {
     }
 
     if (!route.static && !route.hasOwnProperty("method")) {
-      route.method = [HTTPController.METHODS.GET, HTTPController.METHODS.HEAD, HTTPController.METHODS.OPTIONS];
+      route.method = [
+        HTTPController.METHODS.GET,
+        HTTPController.METHODS.HEAD,
+        HTTPController.METHODS.OPTIONS,
+      ];
     }
 
     if (
@@ -93,7 +97,11 @@ class HTTPController {
       if (Array.isArray(route.method)) {
         const methodsLength = route.method.length;
         if (methodsLength === 0) {
-          route.method = [HTTPController.METHODS.GET, HTTPController.METHODS.HEAD, HTTPController.METHODS.OPTIONS];
+          route.method = [
+            HTTPController.METHODS.GET,
+            HTTPController.METHODS.HEAD,
+            HTTPController.METHODS.OPTIONS,
+          ];
         } else {
           for (let i = 0; i < methodsLength; i++) {
             if (methods.indexOf(route.method[i]) === -1) {
@@ -121,7 +129,11 @@ class HTTPController {
     }
 
     if (route.static && !route.hasOwnProperty("method")) {
-      route.method = [HTTPController.METHODS.GET, HTTPController.METHODS.HEAD, HTTPController.METHODS.OPTIONS];
+      route.method = [
+        HTTPController.METHODS.GET,
+        HTTPController.METHODS.HEAD,
+        HTTPController.METHODS.OPTIONS,
+      ];
     }
 
     if (route.hasOwnProperty("cors") && typeof route.cors !== "string") {
@@ -202,9 +214,8 @@ class HTTPController {
       const match = this.routes[i].match(req.__URL);
       if (
         match &&
-        ((req.__METHOD === HTTPController.METHODS.HEAD || req.__METHOD === HTTPController.METHODS.OPTIONS) ||
-          (typeof this.routes[i].method === "string" &&
-            this.routes[i].method === req.__METHOD) ||
+        ((typeof this.routes[i].method === "string" &&
+          this.routes[i].method === req.__METHOD) ||
           (Array.isArray(this.routes[i].method) &&
             this.routes[i].method.indexOf(req.__METHOD) !== -1))
       ) {
@@ -239,8 +250,7 @@ class HTTPController {
     }
 
     // Handle redirect (301)
-    if (req.__ROUTE.redirect)
-      return this.handleRedirect(res, req, cors);
+    if (req.__ROUTE.redirect) return this.handleRedirect(res, req, cors);
 
     // Static route
     if (req.__ROUTE.static) {
@@ -352,9 +362,7 @@ class HTTPController {
   addCORS(res, req, cors) {
     if (cors) {
       res.writeHeader("Access-Control-Allow-Origin", cors);
-      res.writeHeader(
-        `Access-Control-Allow-Methods: ${req.__ALLOWED_METHODS}`
-      );
+      res.writeHeader(`Access-Control-Allow-Methods: ${req.__ALLOWED_METHODS}`);
     }
   }
 
