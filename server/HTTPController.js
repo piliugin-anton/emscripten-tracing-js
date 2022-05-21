@@ -83,14 +83,23 @@ class HTTPController {
         method.toLowerCase()
       );
 
-      if (
-        typeof route.method === "string" &&
-        methods.indexOf(route.method) === -1
-      ) {
-        throw new Error(`Method ${route.method} not found.`);
-      }
+      if (typeof route.method === "string") {
+        if (methods.indexOf(route.method) === -1) {
+          throw new Error(`Method ${route.method} not found.`);
+        }
 
-      if (Array.isArray(route.method)) {
+        const notHead = route.method !== HTTPController.METHODS.HEAD;
+        const notOptions = route.method !== HTTPController.METHODS.OPTIONS;
+
+        if (notHead) {
+          route.method = [route.method, HTTPController.METHODS.HEAD];
+        }
+
+        if (notOptions) {
+          if (notHead) route.method.push(HTTPController.METHODS.OPTIONS);
+          else route.method = [route.method, HTTPController.METHODS.OPTIONS];
+        }
+      } else {
         const methodsLength = route.method.length;
         if (methodsLength === 0) {
           route.method = [
@@ -174,6 +183,7 @@ class HTTPController {
   }
 
   attachTo(App) {
+    console.log(this.routes);
     App.any("/*", this.handleRequest);
   }
 
