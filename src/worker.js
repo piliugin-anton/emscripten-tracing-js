@@ -24,6 +24,11 @@ class Tracing {
   destroy() {
     this.session = null;
     this.version = null;
+
+    if (this.queue.length > 0) {
+      this._scheduleSend(0);
+      return setTimeout(this.disconnect, this.DISCONNECT_TIMEOUT);
+    }
   }
 
   send(message) {
@@ -43,10 +48,10 @@ class Tracing {
   }
 
   _scheduleSend(timeout) {
-    clearTimeout(this.timeout);//
+    clearTimeout(this.timeout);
     this.timeout = setTimeout(
       this._sendQueue.bind(this),
-      timeout || this.SEND_TIMEOUT
+      timeout !== undefined ? timeout : this.SEND_TIMEOUT
     );
   }
 
@@ -157,12 +162,14 @@ self.addEventListener(
     } else if (cmd === "configure") {
       console.log("Configure me!");
       const url = message.url.replace(/^http/, "ws");
-      Tracer.connect(
+      Tracer.configure(url);
+      /*Tracer.connect(
         `${url}?version=${message.data_version}&session=${message.session_id}`
-      );
+      );*/
     } else if (cmd === "close") {
       console.log("WANT TO CLOSE");
-      Tracer.disconnect();
+      //Tracer.disconnect();
+      Tracer.destroy();
     }
   },
   false

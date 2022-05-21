@@ -50,7 +50,7 @@ gulp.task("worker.js", () => {
         trim: true,
       })
     )
-    .pipe(gulp.dest(__dirname));
+    .pipe(gulp.dest(webDir));
 });
 
 if (process.env.NODE_ENV === "development") {
