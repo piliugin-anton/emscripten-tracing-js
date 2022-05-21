@@ -340,7 +340,7 @@ class HTTPController {
 
     return res.writeHeader("Location", req.__ROUTE.redirect).endWithoutBody();
   }
-
+  // TODO: Add other data types
   handlePostRequest(res, req, requestObject, cors) {
     if (req.__ROUTE.json) {
       return this.readJSON(
@@ -566,21 +566,22 @@ class HTTPController {
     res.onAborted(err);
   }
 
-  arrayJoin(array, separator = ", ") {
+  arrayJoin(array, separator = ", ", toUpper = false) {
     const arrayLength = array.length;
     const lastElement = arrayLength - 1;
     let string = "";
     for (let i = 0; i < arrayLength; i++) {
-      string += i === lastElement ? array[i] : array[i] + separator;
+      const str = toUpper ? array[i].toUpperCase() : array[i];
+      string += i === lastElement ? str : str + separator;
     }
 
     return string;
   }
 
   getMethodsString(variable) {
-    if (typeof variable === "string") return variable;
+    if (typeof variable === "string") return variable.toUpperCase();
 
-    return this.arrayJoin(variable, ", ");
+    return this.arrayJoin(variable, ", ", true);
   }
 
   static get METHODS() {

@@ -111,8 +111,7 @@ gulp.task("server", (done) => {
       NODE_ENV: "development",
     },
     ext: "js json eta",
-    ignore: ["./gulpfile.js", "./package.json", "./package-lock.json"],
-    watch: ["./server.js", "./server/**/*", templatesGlob],
+    watch: [path.join(__dirname, "server.js"), path.join(__dirname, "server", "**/*"), templatesGlob],
     delay: 2500,
     done: done,
   });
