@@ -9,26 +9,34 @@ class Tracing {
     this.client = null;
     this.queue = [];
     this.SEND_TIMEOUT = 500;
+    this.DESTROY_TIMEOUT = 1000;
   }
 
-  configure(url) {
+  configure(url, session, version) {
     this.session = session;
     this.version = version;
     this.client = axios.create({
       baseURL: url,
-      timeout: 1000,
-      headers: { "Emscripten-Tracing-JS": version },
+      timeout: 3000,
+      headers: {
+        "Emscripten-Tracing-JS": this.version,
+        "Content-Type": "text/emscripten-data",
+      },
     });
   }
 
   destroy() {
-    this.session = null;
-    this.version = null;
-
     if (this.queue.length > 0) {
       this._scheduleSend(0);
-      return setTimeout(this.disconnect, this.DISCONNECT_TIMEOUT);
+      return setTimeout(this.destroy.bind(this), this.DESTROY_TIMEOUT);
     }
+
+    this.session = null;
+    this.version = null;
+    this.client = null;
+    this.queue = [];
+    clearTimeout(this.timeout);
+    this.timeout = null;
   }
 
   send(message) {
@@ -56,13 +64,13 @@ class Tracing {
   }
 
   _sendQueue() {
-    if (this.queue.length === 0) return;
+    if (this.queue.length === 0 || !this.session || !this.version) return;
 
-    this.client.post("/trace", this._arrayJoin(this.queue, "\n"), {
-      headers: {
-        "Content-Type": "text/emscripten-data",
-      },
-    });
+    this.client.post(
+      `/trace?session=${this.session}&version=${this.version}`,
+      this._arrayJoin(this.queue, "\n")
+    ).then((res) => console.log("Success", res))
+    .catch((error) => console.log(error));
   }
 }
 
@@ -161,8 +169,8 @@ self.addEventListener(
       Tracer.send(message.entry);
     } else if (cmd === "configure") {
       console.log("Configure me!");
-      const url = message.url.replace(/^http/, "ws");
-      Tracer.configure(url);
+      //const url = message.url.replace(/^http/, "ws");
+      Tracer.configure(message.url, message.session_id, message.data_version);
       /*Tracer.connect(
         `${url}?version=${message.data_version}&session=${message.session_id}`
       );*/
