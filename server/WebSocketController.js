@@ -23,6 +23,64 @@ class WebSocketController {
     return true;
   }
 
+  handleUpgrade(res, req, context) {
+    console.log("Upgrade", req);
+    return res.upgrade(
+      {
+        url: `${req.getUrl()}?${req.getQuery()}`,
+      },
+      /* Spell these correctly */
+      req.getHeader("sec-websocket-key"),
+      req.getHeader("sec-websocket-protocol"),
+      req.getHeader("sec-websocket-extensions"),
+      context
+    );
+  }
+
+  handleMessage(ws, message, isBinary) {
+    const url = new URL(ws.url, "http://0.0.0.0");
+    const params = url.searchParams;
+    const version = params.get("version");
+    const session = params.get("session");
+
+    if (!version || !session) return;
+
+    // Compress message?
+    const compressed = true;
+
+    // Emscripten probe
+    const probe = message.slice(0, 11);
+
+    if (this.isEmscriptenData(probe)) {
+      console.log("Emscripten data!");
+      const data = Buffer.from(message.slice(11, message.byteLength));
+
+      const filename = path.join(
+        this.dataDir,
+        `${session}.${version}.emscripten`
+      );
+
+      return fs.promises
+        .appendFile(filename, data)
+        .then(() => {
+          // Response
+          if (ws.send("1", isBinary, compressed) !== 1)
+            return this.wsBuffer.push({ msg, isBinary, compressed });
+        })
+        .catch((ex) => console.log(ex));
+    }
+  }
+
+  handleDrain(ws) {
+    if (this.wsBuffer.length) {
+      const { msg, isBinary, compressed } = this.wsBuffer[0];
+
+      if (ws.send(msg, isBinary, compressed) === 1) {
+        this.wsBuffer.splice(0, 1);
+      }
+    }
+  }
+
   attachTo(App) {
     App.ws("/", {
       /* There are many common helper features */
@@ -33,60 +91,9 @@ class WebSocketController {
       sendPingsAutomatically: true,
       closeOnBackpressureLimit: false,
 
-      upgrade: (res, req, context) => {
-        console.log("Upgrade", req);
-        res.upgrade(
-          {
-            url: `${req.getUrl()}?${req.getQuery()}`,
-          },
-          /* Spell these correctly */
-          req.getHeader("sec-websocket-key"),
-          req.getHeader("sec-websocket-protocol"),
-          req.getHeader("sec-websocket-extensions"),
-          context
-        );
-      },
-
-      message: (ws, message, isBinary) => {
-        const url = new URL(ws.url, "http://0.0.0.0");
-        const params = url.searchParams;
-        const version = params.get("version");
-        const session = params.get("session");
-
-        if (!version || !session) return;
-
-        // Compress message?
-        const compressed = true;
-
-        // Emscripten probe
-        const probe = message.slice(0, 11);
-
-        if (this.isEmscriptenData(probe)) {
-          console.log("Emscripten data!");
-          const data = Buffer.from(message.slice(11, message.byteLength));
-
-          const filename = path.join(this.dataDir, `${session}.${version}.emscripten`);
-
-          fs.promises
-            .appendFile(filename, data)
-            .then(() => {
-              // Response
-              if (ws.send("1", isBinary, compressed) !== 1) {
-                return this.wsBuffer.push({ msg, isBinary, compressed });
-              }
-            })
-            .catch((ex) => console.log(ex));
-        }
-      },
-      drain: (ws) => {
-        if (this.wsBuffer.length) {
-          const { msg, isBinary, compressed } = this.wsBuffer[0];
-
-          if (ws.send(msg, isBinary, compressed) === 1) {
-            this.wsBuffer.splice(0, 1);
-          }
-        }
-      },
+      upgrade: this.handleUpgrade.bind(this),
+      message: this.handleMessage.bind(this),
+      drain: this.handleDrain.bind(this),
     });
   }
 }

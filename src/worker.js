@@ -1,5 +1,66 @@
+import axios from "axios";
 import WebsocketReconnect from "websocket-reconnect-pro";
+
 class Tracing {
+  constructor() {
+    this.session = null;
+    this.version = null;
+    this.timeout = null;
+    this.client = null;
+    this.queue = [];
+  }
+
+  configure(url) {
+    this.session = session;
+    this.version = version;
+    this.client = axios.create({
+      baseURL: url,
+      timeout: 1000,
+      headers: { "Emscripten-Tracing-JS": "42" },
+    });
+  }
+
+  destroy() {
+    this.session = null;
+    this.version = null;
+  }
+
+  send(message) {
+    this.queue.push(message);
+    this._scheduleSend();
+  }
+
+  _arrayJoin(array, separator) {
+    let string = "";
+    const arrayLength = array.length;
+    for (let i = 0; i < arrayLength; i++) {
+      const added = i === arrayLength - 1 ? array[i] : array[i] + separator;
+      string += added;
+    }
+
+    return string;
+  }
+
+  _scheduleSend(timeout) {
+    clearTimeout(this.timeout);
+    this.timeout = setTimeout(
+      this._sendQueue.bind(this),
+      timeout || this.SEND_TIMEOUT
+    );
+  }
+
+  _sendQueue() {
+    if (this.queue.length === 0) return;
+
+    this.client.post("/trace", this._arrayJoin(this.queue, "\n"), {
+      headers: {
+        "Content-Type": "text/emscripten-data",
+      },
+    });
+  }
+}
+
+class Tracing2 {
   constructor() {
     this.ws = null;
     this.queue = [];
@@ -30,7 +91,7 @@ class Tracing {
       maxEnqueuedMessages: 0,
       startClosed: false,
       enableHeartbeat: false,
-      debug: false,
+      debug: true,
     });
 
     this.ws.onmessage = (e) => this._onMessage(e.data);
@@ -55,7 +116,7 @@ class Tracing {
     let string = "";
     const arrayLength = array.length;
     for (let i = 0; i < arrayLength; i++) {
-      const added = i === (arrayLength - 1) ? array[i] : array[i] + separator;
+      const added = i === arrayLength - 1 ? array[i] : array[i] + separator;
       string += added;
     }
 
@@ -93,6 +154,7 @@ self.addEventListener(
     if (cmd === "post") {
       Tracer.send(message.entry);
     } else if (cmd === "configure") {
+      console.log("Configure me!");
       const url = message.url.replace(/^http/, "ws");
       Tracer.connect(
         `${url}?version=${message.data_version}&session=${message.session_id}`

@@ -19,6 +19,7 @@ class HTTPController {
       throw new Error("CORS must be a string type, ex: '*'");
     }
 
+    this.rootDir = options.rootDir || path.join(__dirname, "..");
     this.cors = options.cors;
     this.errorHandler =
       typeof options.errorHandler === "function" ? options.errorHandler : null;
@@ -29,6 +30,17 @@ class HTTPController {
     autoBind(this);
 
     return this;
+  }
+
+  arrayJoin(array, separator) {
+    let string = "";
+
+    const arrayLength = array.length;
+    for (let i = 0; i < arrayLength; i++) {
+      string += i === arrayLength - 1 ? array[i] : array[i] + separator;
+    }
+
+    return string;
   }
 
   hasRoute(pattern) {
@@ -54,7 +66,7 @@ class HTTPController {
     }
 
     if (!route.static && !route.hasOwnProperty("method")) {
-      route.method = HTTPController.METHODS.GET;
+      route.method = [HTTPController.METHODS.GET, HTTPController.METHODS.HEAD, HTTPController.METHODS.OPTIONS];
     }
 
     if (
@@ -67,20 +79,34 @@ class HTTPController {
     }
 
     if (!route.static && route.hasOwnProperty("method")) {
-      const methods = HTTPController.AVAILABLE_METHODS.map((method) => method.toLowerCase());
-      if (typeof route.method === "string" && methods.indexOf(route.method) === -1) {
+      const methods = HTTPController.AVAILABLE_METHODS.map((method) =>
+        method.toLowerCase()
+      );
+
+      if (
+        typeof route.method === "string" &&
+        methods.indexOf(route.method) === -1
+      ) {
         throw new Error(`Method ${route.method} not found`);
       }
 
       if (Array.isArray(route.method)) {
         const methodsLength = route.method.length;
         if (methodsLength === 0) {
-          route.method = HTTPController.METHODS.GET;
+          route.method = [HTTPController.METHODS.GET, HTTPController.METHODS.HEAD, HTTPController.METHODS.OPTIONS];
         } else {
           for (let i = 0; i < methodsLength; i++) {
             if (methods.indexOf(route.method[i]) === -1) {
               throw new Error(`Method ${route.method} not found`);
             }
+          }
+
+          if (route.method.indexOf(HTTPController.METHODS.HEAD) === -1) {
+            route.method.push(HTTPController.METHODS.HEAD);
+          }
+
+          if (route.method.indexOf(HTTPController.METHODS.OPTIONS) === -1) {
+            route.method.push(HTTPController.METHODS.OPTIONS);
           }
         }
       }
@@ -95,7 +121,7 @@ class HTTPController {
     }
 
     if (route.static && !route.hasOwnProperty("method")) {
-      route.method = HTTPController.METHODS.GET;
+      route.method = [HTTPController.METHODS.GET, HTTPController.METHODS.HEAD, HTTPController.METHODS.OPTIONS];
     }
 
     if (route.hasOwnProperty("cors") && typeof route.cors !== "string") {
@@ -111,7 +137,7 @@ class HTTPController {
     });
 
     if (route.static && !route.dir) {
-      route.dir = __dirname;
+      route.dir = this.rootDir;
     }
 
     this.routes.push(route);
@@ -166,11 +192,6 @@ class HTTPController {
     // Request method
     req.__METHOD = req.getMethod();
 
-    // OPTIONS request
-    if (req.__METHOD === HTTPController.METHODS.OPTIONS) {
-      return this.handleOptionsRequest(res);
-    }
-
     // Request URL
     req.__URL = req.getUrl();
     // Request query
@@ -181,7 +202,7 @@ class HTTPController {
       const match = this.routes[i].match(req.__URL);
       if (
         match &&
-        (req.__METHOD === HTTPController.METHODS.HEAD ||
+        ((req.__METHOD === HTTPController.METHODS.HEAD || req.__METHOD === HTTPController.METHODS.OPTIONS) ||
           (typeof this.routes[i].method === "string" &&
             this.routes[i].method === req.__METHOD) ||
           (Array.isArray(this.routes[i].method) &&
@@ -189,6 +210,11 @@ class HTTPController {
       ) {
         req.__ROUTE = this.routes[i];
         req.__PARAMS = { ...match.params };
+        // Use this.routes[i].allowedMethods
+        req.__ALLOWED_METHODS =
+          typeof req.__ROUTE.method === "string"
+            ? req.__ROUTE.method
+            : this.arrayJoin(req.__ROUTE.method, ", ");
         break;
       }
     }
@@ -207,9 +233,14 @@ class HTTPController {
     // CORS
     const cors = req.__ROUTE.cors || this.cors;
 
+    // OPTIONS request
+    if (req.__METHOD === HTTPController.METHODS.OPTIONS) {
+      return this.handleOptionsRequest(res, req, cors);
+    }
+
     // Handle redirect (301)
     if (req.__ROUTE.redirect)
-      return this.handleRedirect(res, req.__ROUTE.redirect, cors);
+      return this.handleRedirect(res, req, cors);
 
     // Static route
     if (req.__ROUTE.static) {
@@ -220,7 +251,10 @@ class HTTPController {
       if (!fs.existsSync(absoluteFilePath))
         return this.handleError(404, res, requestObject, cors, true);
 
-      const stat = fs.statSync(absoluteFilePath);
+      const stat = fs.statSync(absoluteFilePath, {
+        bigint: true,
+      });
+
       // Damn! It's not a file (it's a directory)
       if (!stat.isFile())
         return this.handleError(404, res, requestObject, cors, true);
@@ -232,6 +266,7 @@ class HTTPController {
       if (req.__METHOD === HTTPController.METHODS.HEAD)
         return this.handleHeadRequest(
           res,
+          req,
           stat.size.toString(),
           mimeType,
           cors
@@ -251,6 +286,10 @@ class HTTPController {
         });
     }
 
+    // POST request
+    if (req.__METHOD === HTTPController.METHODS.POST)
+      return handlePostRequest(res, req);
+
     // Non-static route
 
     // Get data from route handler
@@ -262,7 +301,7 @@ class HTTPController {
     // Cannot render HTML, return 500
     if (!HTML) return this.handleError(500, res, requestObject);
 
-    // Head request
+    // HEAD request
     if (req.__METHOD === HTTPController.METHODS.HEAD)
       return this.handleHeadRequest(
         res,
@@ -272,42 +311,49 @@ class HTTPController {
       );
 
     // Woohoo! Return HTML
-    return this.handleResponse(res, HTML, cors);
+    return this.handleResponse(res, req, HTML, cors);
   }
 
-  handleOptionsRequest(res) {
-    return res
+  handleOptionsRequest(res, req, cors) {
+    res
       .writeStatus(HTTPController.STATUSES[200])
-      .writeHeader(...HTTPController.OPTIONS_HEADER)
-      .end();
+      .writeHeader("Allow", req.__ALLOWED_METHODS);
+
+    this.addCORS(res, req, cors);
+
+    return res.endWithoutBody();
   }
 
-  handleHeadRequest(res, size, mimeType, cors) {
+  handleHeadRequest(res, req, size, mimeType, cors) {
     res
       .writeStatus(HTTPController.STATUSES[200])
       .writeHeader("Content-Type", mimeType)
       .writeHeader("Content-Length", size);
 
-    this.addCORS(res, cors);
+    this.addCORS(res, req, cors);
 
     return res.endWithoutBody();
   }
 
-  handleRedirect(res, redirect, cors) {
+  handleRedirect(res, req, cors) {
     res.writeStatus(HTTPController.STATUSES[301]);
 
-    this.addCORS(res, cors);
+    this.addCORS(res, req, cors);
 
-    return res.writeHeader("Location", redirect).endWithoutBody();
+    return res.writeHeader("Location", req.__ROUTE.redirect).endWithoutBody();
   }
 
-  addCORS(res, cors) {
+  handlePostRequest(res, req) {
+    const contentType = req.getHeader("content-type");
+    console.log("Content-Type", contentType);
+    res.endWithoutBody();
+  }
+
+  addCORS(res, req, cors) {
     if (cors) {
       res.writeHeader("Access-Control-Allow-Origin", cors);
       res.writeHeader(
-        `Access-Control-Allow-Methods: ${HTTPController.AVAILABLE_METHODS.join(
-          ", "
-        )}`
+        `Access-Control-Allow-Methods: ${req.__ALLOWED_METHODS}`
       );
     }
   }
@@ -410,9 +456,7 @@ class HTTPController {
         size = end - start;
       }
 
-      if (cors) {
-        headers.push(["Access-Control-Allow-Origin", cors]);
-      }
+      if (cors) headers.push(["Access-Control-Allow-Origin", cors]);
 
       this.writeHeaders(res, headers);
 
@@ -483,10 +527,6 @@ class HTTPController {
       POST: "post",
       OPTIONS: "options",
     };
-  }
-
-  static get OPTIONS_HEADER() {
-    return ["Allow", HTTPController.AVAILABLE_METHODS.join(", ")];
   }
 
   static get AVAILABLE_METHODS() {

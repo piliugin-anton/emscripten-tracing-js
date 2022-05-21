@@ -41,7 +41,10 @@ const shutdown = (event, dir) => {
 
 process.on("SIGINT", () => shutdown("SIGINT", dataDir));
 
-const Templates = new TemplateEngine();
+const Templates = new TemplateEngine({
+  rootDir: __dirname
+});
+
 const HTTP = new HTTPController({
   templateEngine: Templates,
   errorHandler: (request, code) => {
