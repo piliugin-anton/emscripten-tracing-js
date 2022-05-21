@@ -83,8 +83,9 @@ const HTTP = new HTTPController({
     method: HTTPController.METHODS.POST,
     json: true,
     handler: (request) => {
-      
-    }
+      console.log("POST request with JSON!");
+    },
+    cors: "*"
   },
   {
     pattern: "/worker.js",
