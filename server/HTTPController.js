@@ -109,14 +109,6 @@ class HTTPController {
       }
     }
 
-    if (
-      route.static &&
-      route.hasOwnProperty("method") &&
-      route.method !== HTTPController.METHODS.GET
-    ) {
-      throw new Error("Static routes can only have a GET method.");
-    }
-
     if (route.static) {
       route.method = [
         HTTPController.METHODS.GET,
