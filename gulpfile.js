@@ -15,7 +15,7 @@ var resources = require("./templates/resources");
 
 var workerFilePath = path.join(__dirname, "src", "worker.js");
 var templatesGlob = path.join(__dirname, "templates", "**/*");
-var style = path.join(__dirname, "static", "style.css");
+var style = path.join(__dirname, "www", "static", "style.css");
 
 gulp.task("worker.js", function () {
   var browserified = browserify({
@@ -101,7 +101,7 @@ gulp.task("develop", function (done) {
     },
     ext: "js json eta",
     ignore: ["gulpfile.js", "package.json", "package-lock.json"],
-    watch: ["./server.js", "./server/**/*", "./static/bundle.min.js", "./static/bundle.min.css"],
+    watch: ["./server.js", "./server/**/*", "./www/static/bundle.min.js", "./www/static/bundle.min.css"],
     done: done,
   });
 

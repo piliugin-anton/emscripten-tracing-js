@@ -80,12 +80,13 @@ const HTTP = new HTTPController({
   {
     pattern: "/worker.js",
     static: true,
+    dir: path.join(__dirname, "www"),
     cors: "*",
   },
   {
     pattern: "/static/(.+)",
     static: true,
-    dir: __dirname,
+    dir: path.join(__dirname, "www"),
   },
 ]);
 
