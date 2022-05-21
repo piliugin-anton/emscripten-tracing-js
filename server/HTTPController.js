@@ -32,17 +32,6 @@ class HTTPController {
     return this;
   }
 
-  arrayJoin(array, separator) {
-    let string = "";
-
-    const arrayLength = array.length;
-    for (let i = 0; i < arrayLength; i++) {
-      string += i === arrayLength - 1 ? array[i] : array[i] + separator;
-    }
-
-    return string;
-  }
-
   hasRoute(pattern) {
     return this.routes.findIndex((r) => r.pattern === pattern) !== -1;
   }
@@ -79,7 +68,7 @@ class HTTPController {
       typeof route.method !== "string" &&
       !Array.isArray(route.method)
     ) {
-      throw new Error("Route methods can be a type of string or array");
+      throw new Error("Route methods can be a type of string or array.");
     }
 
     if (!route.static && route.hasOwnProperty("method")) {
@@ -91,7 +80,7 @@ class HTTPController {
         typeof route.method === "string" &&
         methods.indexOf(route.method) === -1
       ) {
-        throw new Error(`Method ${route.method} not found`);
+        throw new Error(`Method ${route.method} not found.`);
       }
 
       if (Array.isArray(route.method)) {
@@ -105,7 +94,7 @@ class HTTPController {
         } else {
           for (let i = 0; i < methodsLength; i++) {
             if (methods.indexOf(route.method[i]) === -1) {
-              throw new Error(`Method ${route.method} not found`);
+              throw new Error(`Method ${route.method} not found.`);
             }
           }
 
@@ -125,10 +114,10 @@ class HTTPController {
       route.hasOwnProperty("method") &&
       route.method !== HTTPController.METHODS.GET
     ) {
-      throw new Error("Static routes can be a GET only method");
+      throw new Error("Static routes can only have a GET method.");
     }
 
-    if (route.static && !route.hasOwnProperty("method")) {
+    if (route.static) {
       route.method = [
         HTTPController.METHODS.GET,
         HTTPController.METHODS.HEAD,
@@ -221,11 +210,6 @@ class HTTPController {
       ) {
         req.__ROUTE = this.routes[i];
         req.__PARAMS = { ...match.params };
-        // Use this.routes[i].allowedMethods
-        req.__ALLOWED_METHODS =
-          typeof req.__ROUTE.method === "string"
-            ? req.__ROUTE.method
-            : this.arrayJoin(req.__ROUTE.method, ", ");
         break;
       }
     }
@@ -327,7 +311,7 @@ class HTTPController {
   handleOptionsRequest(res, req, cors) {
     res
       .writeStatus(HTTPController.STATUSES[200])
-      .writeHeader("Allow", req.__ALLOWED_METHODS);
+      .writeHeader("Allow", this.getMethodsString(req.__METHOD));
 
     this.addCORS(res, req, cors);
 
@@ -362,7 +346,7 @@ class HTTPController {
   addCORS(res, req, cors) {
     if (cors) {
       res.writeHeader("Access-Control-Allow-Origin", cors);
-      res.writeHeader(`Access-Control-Allow-Methods: ${req.__ALLOWED_METHODS}`);
+      res.writeHeader(`Access-Control-Allow-Methods: ${this.getMethodsString(req.__METHOD)}`);
     }
   }
 
