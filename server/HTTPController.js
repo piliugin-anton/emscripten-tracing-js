@@ -232,6 +232,9 @@ class HTTPController {
     // CORS
     const cors = req.__ROUTE.cors || this.cors;
 
+    // Allowed methods
+    req.__ALLOWED_METHODS = this.getMethodsString(req.__ROUTE.method);
+
     // OPTIONS request
     if (req.__METHOD === HTTPController.METHODS.OPTIONS) {
       return this.handleOptionsRequest(res, req, cors);
@@ -315,7 +318,7 @@ class HTTPController {
   handleOptionsRequest(res, req, cors) {
     res
       .writeStatus(HTTPController.STATUSES[200])
-      .writeHeader("Allow", this.getMethodsString(req.__ROUTE.method));
+      .writeHeader("Allow", req.__ALLOWED_METHODS);
 
     this.addCORS(res, req, cors);
 
@@ -359,9 +362,7 @@ class HTTPController {
   addCORS(res, req, cors) {
     if (cors) {
       res.writeHeader("Access-Control-Allow-Origin", cors);
-      res.writeHeader(
-        `Access-Control-Allow-Methods: ${this.getMethodsString(req.__ROUTE.method)}`
-      );
+      res.writeHeader("Access-Control-Allow-Methods", req.__ALLOWED_METHODS);
     }
   }
 
