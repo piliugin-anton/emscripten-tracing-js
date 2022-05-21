@@ -39,7 +39,10 @@ class HTTPController {
   addRoute(route = {}) {
     if (
       typeof route.pattern !== "string" ||
-      (!route.static && !route.redirect && !route.json && typeof route.template !== "string")
+      (!route.static &&
+        !route.redirect &&
+        !route.json &&
+        typeof route.template !== "string")
     ) {
       throw new Error(
         "Route must have a pattern. Non-static route must have a template or should have an option 'json' set to 'true' (JSON API mode)"
@@ -272,11 +275,11 @@ class HTTPController {
         });
     }
 
+    // Non-static route
+
     // POST request
     if (req.__METHOD === HTTPController.METHODS.POST)
-      return handlePostRequest(res, req);
-
-    // Non-static route
+      return handlePostRequest(res, req, requestObject, cors);
 
     // Get data from route handler
     const data = req.__ROUTE.handler(requestObject);
@@ -297,7 +300,7 @@ class HTTPController {
       );
 
     // Woohoo! Return HTML
-    return this.handleResponse(res, req, HTML, cors);
+    return this.handleResponse(res, req, HTML, "text/html", cors);
   }
 
   handleOptionsRequest(res, req, cors) {
@@ -329,16 +332,27 @@ class HTTPController {
     return res.writeHeader("Location", req.__ROUTE.redirect).endWithoutBody();
   }
 
-  handlePostRequest(res, req) {
-    const contentType = req.getHeader("content-type");
-    console.log("Content-Type", contentType);
+  handlePostRequest(res, req, requestObject, cors) {
+    if (req.__ROUTE.json) {
+      return this.readJSON(
+        res,
+        (json) => {
+          const data = req.__ROUTE.handler({ ...requestObject, json });
+          this.handleResponse(res, req, data, "application/json", cors);
+        },
+        // TODO: Add error meta to pass error message to a user?
+        (err) => this.handleError(500, res, requestObject, cors, false)
+      );
+    }
     res.endWithoutBody();
   }
 
   addCORS(res, req, cors) {
     if (cors) {
       res.writeHeader("Access-Control-Allow-Origin", cors);
-      res.writeHeader(`Access-Control-Allow-Methods: ${this.getMethodsString(req.__METHOD)}`);
+      res.writeHeader(
+        `Access-Control-Allow-Methods: ${this.getMethodsString(req.__METHOD)}`
+      );
     }
   }
 
@@ -355,12 +369,12 @@ class HTTPController {
     };
   }
 
-  handleResponse(res, req, HTML, cors) {
-    res.writeStatus("200 OK").writeHeader("Content-Type", "text/html");
+  handleResponse(res, req, data, dataType, cors) {
+    res.writeStatus("200 OK").writeHeader("Content-Type", dataType);
 
     this.addCORS(res, req, cors);
 
-    return res.end(HTML);
+    return res.end(data);
   }
 
   handleError(code, res, requestObject, cors, isStatic) {
@@ -502,6 +516,45 @@ class HTTPController {
         }
       });
     });
+  }
+
+  readJSON(res, cb, err) {
+    let buffer;
+    /* Register data cb */
+    res.onData((ab, isLast) => {
+      let chunk = Buffer.from(ab);
+      if (isLast) {
+        let json;
+        if (buffer) {
+          try {
+            json = JSON.parse(Buffer.concat([buffer, chunk]));
+          } catch (e) {
+            /* res.close calls onAborted */
+            res.close();
+            return;
+          }
+          cb(json);
+        } else {
+          try {
+            json = JSON.parse(chunk);
+          } catch (e) {
+            /* res.close calls onAborted */
+            res.close();
+            return;
+          }
+          cb(json);
+        }
+      } else {
+        if (buffer) {
+          buffer = Buffer.concat([buffer, chunk]);
+        } else {
+          buffer = Buffer.concat([chunk]);
+        }
+      }
+    });
+
+    /* Register error cb */
+    res.onAborted(err);
   }
 
   static get METHODS() {
