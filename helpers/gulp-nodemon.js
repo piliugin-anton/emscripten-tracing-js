@@ -1,4 +1,5 @@
 const cp = require("child_process");
+const path = require("path");
 const colors = require("colors");
 const bus = require("nodemon/lib/utils/bus");
 
@@ -18,23 +19,16 @@ module.exports = (options) => {
 
   // Allow for injection of tasks on file change
   if (options.tasks) {
-    let debounceFiles = [];
-
-    const debounceRunTasks = debounce(() => {
-      const files = debounceFiles.slice();
-      debounceFiles = [];
-      if (!options.quiet) nodemonLog("running tasks...");
-      if (typeof options.tasks === "function") run(options.tasks(files));
-      else run(options.tasks);
-    }, 100);
 
     // Remove all 'restart' listeners
     bus.removeAllListeners("restart");
 
     // Place our listener in first position
-    bus.on("restart", (files) => {
-      debounceFiles = debounceFiles.concat(files);
-      debounceRunTasks();
+    bus.on("restart", function (files) {
+      if (!options.quiet) nodemonLog("Running tasks...");
+
+      if (typeof options.tasks === "function") run(options.tasks(files));
+      else run(options.tasks);
     });
 
     // Re-add all other listeners
