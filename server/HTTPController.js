@@ -355,10 +355,10 @@ class HTTPController {
     };
   }
 
-  handleResponse(res, HTML, cors) {
+  handleResponse(res, req, HTML, cors) {
     res.writeStatus("200 OK").writeHeader("Content-Type", "text/html");
 
-    this.addCORS(res, cors);
+    this.addCORS(res, req, cors);
 
     return res.end(HTML);
   }

@@ -8,6 +8,7 @@ class Tracing {
     this.timeout = null;
     this.client = null;
     this.queue = [];
+    this.SEND_TIMEOUT = 500;
   }
 
   configure(url) {
@@ -16,7 +17,7 @@ class Tracing {
     this.client = axios.create({
       baseURL: url,
       timeout: 1000,
-      headers: { "Emscripten-Tracing-JS": "42" },
+      headers: { "Emscripten-Tracing-JS": version },
     });
   }
 
