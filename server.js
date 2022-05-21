@@ -1,9 +1,9 @@
 const uWS = require("uWebSockets.js");
 const fs = require("fs");
 const path = require("path");
-const WebSocketController = require("./WebSocketController");
-const HTTPController = require("./HTTPController.js");
-const TemplateEngine = require("./TemplateEngine.js");
+const WebSocketController = require("./server/WebSocketController");
+const HTTPController = require("./server/HTTPController.js");
+const TemplateEngine = require("./server/TemplateEngine.js");
 
 const port = 5000;
 let serverToken = null;
@@ -40,8 +40,6 @@ const shutdown = (event, dir) => {
 };
 
 process.on("SIGINT", () => shutdown("SIGINT", dataDir));
-process.on("SIGTERM", () => shutdown("SIGTERM", dataDir));
-process.on("SIGUSR2", () => shutdown("SIGUSR2", dataDir));
 
 const Templates = new TemplateEngine();
 const HTTP = new HTTPController({

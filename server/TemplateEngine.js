@@ -5,7 +5,7 @@ const Eta = require("eta");
 class TemplateEngine {
   constructor(options = {}) {
     const defaults = {
-      rootDir: __dirname,
+      rootDir: path.join(__dirname, ".."),
       dir: "templates",
       ext: ".eta",
       cache: false,

@@ -31,8 +31,10 @@ class WebSocketController {
       maxPayloadLength: 16 * 1024 * 1024,
       compression: this.compression,
       sendPingsAutomatically: true,
+      closeOnBackpressureLimit: false,
 
       upgrade: (res, req, context) => {
+        console.log("Upgrade", req);
         res.upgrade(
           {
             url: `${req.getUrl()}?${req.getQuery()}`,
@@ -45,7 +47,6 @@ class WebSocketController {
         );
       },
 
-      /* For brevity we skip the other events (upgrade, open, ping, pong, close) */
       message: (ws, message, isBinary) => {
         const url = new URL(ws.url, "http://0.0.0.0");
         const params = url.searchParams;
@@ -61,6 +62,7 @@ class WebSocketController {
         const probe = message.slice(0, 11);
 
         if (this.isEmscriptenData(probe)) {
+          console.log("Emscripten data!");
           const data = Buffer.from(message.slice(11, message.byteLength));
 
           const filename = path.join(this.dataDir, `${session}.${version}.emscripten`);

@@ -101,7 +101,7 @@ gulp.task("develop", function (done) {
     },
     ext: "js json eta",
     ignore: ["gulpfile.js", "package.json", "package-lock.json"],
-    watch: ["./server.js", "./static/bundle.min.js", "./static/bundle.min.css"],
+    watch: ["./server.js", "./server/**/*", "./static/bundle.min.js", "./static/bundle.min.css"],
     done: done,
   });
 

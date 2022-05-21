@@ -51,6 +51,17 @@ class Tracing {
     this._scheduleSend();
   }
 
+  _arrayJoin(array, separator) {
+    let string = "";
+    const arrayLength = array.length;
+    for (let i = 0; i < arrayLength; i++) {
+      const added = i === (arrayLength - 1) ? array[i] : array[i] + separator;
+      string += added;
+    }
+
+    return string;
+  }
+
   _onMessage(message) {
     if (message === "1") this.queue = [];
   }
@@ -68,7 +79,7 @@ class Tracing {
 
     if (!this.isConnected) return this._scheduleSend();
 
-    this.ws.send("!emscripten" + this.queue.join("\n"));
+    this.ws.send("!emscripten" + this._arrayJoin(this.queue, "\n"));
   }
 }
 
