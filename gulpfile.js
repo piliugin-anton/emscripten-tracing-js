@@ -16,7 +16,8 @@ const resources = res.map((r) => path.join("www", r));
 
 const workerFilePath = path.join(__dirname, "src", "worker.js");
 const templatesGlob = path.join(__dirname, "templates", "**/*");
-const staticDir = path.join(__dirname, "www", "static");
+const webDir = path.join(__dirname, "www")
+const staticDir = path.join(webDir, "static");
 const style = path.join(staticDir, "style.css");
 
 gulp.task("worker.js", () => {

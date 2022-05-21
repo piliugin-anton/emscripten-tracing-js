@@ -368,7 +368,7 @@ class HTTPController {
       },
     };
   }
-
+  // TODO: add support for non-JSON
   handleResponse(res, req, data, dataType, cors) {
     res.writeStatus("200 OK").writeHeader("Content-Type", dataType);
 

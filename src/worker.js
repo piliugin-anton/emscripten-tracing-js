@@ -43,7 +43,7 @@ class Tracing {
   }
 
   _scheduleSend(timeout) {
-    clearTimeout(this.timeout);
+    clearTimeout(this.timeout);//
     this.timeout = setTimeout(
       this._sendQueue.bind(this),
       timeout || this.SEND_TIMEOUT
