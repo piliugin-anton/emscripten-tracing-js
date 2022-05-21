@@ -18,16 +18,23 @@ module.exports = (options) => {
 
   // Allow for injection of tasks on file change
   if (options.tasks) {
+    let debounceFiles = [];
+
+    const debounceRunTasks = debounce(() => {
+      const files = debounceFiles.slice();
+      debounceFiles = [];
+      if (!options.quiet) nodemonLog("running tasks...");
+      if (typeof options.tasks === "function") run(options.tasks(files));
+      else run(options.tasks);
+    }, 100);
+
     // Remove all 'restart' listeners
     bus.removeAllListeners("restart");
 
     // Place our listener in first position
     bus.on("restart", (files) => {
-      console.log("RESTART", files);
-      if (!options.quiet) nodemonLog("running tasks...");
-
-      if (typeof options.tasks === "function") run(options.tasks(files));
-      else run(options.tasks);
+      debounceFiles = debounceFiles.concat(files);
+      debounceRunTasks();
     });
 
     // Re-add all other listeners
@@ -109,4 +116,14 @@ module.exports = (options) => {
 
 const nodemonLog = (message) => {
   console.log("[" + new Date().toString().split(" ")[4].gray + "] " + message);
+};
+
+const debounce = (func, timeout = 100) => {
+  let timer;
+  return (...args) => {
+    clearTimeout(timer);
+    timer = setTimeout(() => {
+      func.apply(this, args);
+    }, timeout);
+  };
 };
