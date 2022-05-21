@@ -183,7 +183,6 @@ class HTTPController {
   }
 
   attachTo(App) {
-    console.log(this.routes);
     App.any("/*", this.handleRequest);
   }
 
@@ -565,6 +564,23 @@ class HTTPController {
 
     /* Register error cb */
     res.onAborted(err);
+  }
+
+  arrayJoin(array, separator = ", ") {
+    const arrayLength = array.length;
+    const lastElement = arrayLength - 1;
+    let string = "";
+    for (let i = 0; i < arrayLength; i++) {
+      string += i === lastElement ? array[i] : array[i] + separator;
+    }
+
+    return string;
+  }
+
+  getMethodsString(variable) {
+    if (typeof variable === "string") return variable;
+
+    return this.arrayJoin(variable, ", ");
   }
 
   static get METHODS() {
