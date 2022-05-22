@@ -292,7 +292,7 @@ class HTTPController {
 
     // POST request
     if (req.__METHOD === HTTPController.METHODS.POST)
-      return handlePostRequest(res, req, requestObject, cors);
+      return this.handlePostRequest(res, req, requestObject, cors);
 
     // Get data from route handler
     const data = req.__ROUTE.handler(requestObject);
