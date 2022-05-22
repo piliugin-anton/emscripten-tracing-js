@@ -15,6 +15,7 @@ class Tracing {
   configure(url, session, version) {
     this.session = session;
     this.version = version;
+    this.url = url;
     this.client = axios.create({
       baseURL: url,
       timeout: 3000,
@@ -66,11 +67,23 @@ class Tracing {
   _sendQueue() {
     if (this.queue.length === 0 || !this.session || !this.version) return;
 
-    this.client.post(
+    /*this.client.post(
       `/trace?session=${this.session}&version=${this.version}`,
       this._arrayJoin(this.queue, "\n")
     ).then((res) => console.log("Success", res))
-    .catch((error) => console.log(error));
+    .catch((error) => console.log(error));*/
+    fetch(
+      `${this.url}trace?session=${this.session}&version=${this.version}`,
+      {
+        method: "POST",
+        headers: {
+          "Emscripten-Tracing-JS": this.version,
+          "Content-Type": "text/emscripten-data",
+        },
+        body: this._arrayJoin(this.queue, "\n"),
+        mode: "*cors"
+      }
+    );
   }
 }
 

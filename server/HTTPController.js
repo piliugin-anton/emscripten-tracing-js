@@ -20,6 +20,7 @@ class HTTPController {
     }
 
     this.rootDir = options.rootDir || path.join(__dirname, "..", "www");
+    this.maxBufferSize = options.maxBufferSize || 16 * 1024 * 1024; // Default to 16Mb
     this.cors = options.cors;
     this.errorHandler =
       typeof options.errorHandler === "function" ? options.errorHandler : null;
@@ -345,18 +346,38 @@ class HTTPController {
   }
   // TODO: Add other data types
   handlePostRequest(res, req, requestObject, cors) {
-    if (req.__ROUTE.json) {
-      return this.readJSON(
-        res,
-        (json) => {
-          const data = req.__ROUTE.handler({ ...requestObject, json });
-          this.handleResponse(res, req, data, "application/json", cors);
-        },
-        // TODO: Add error meta to pass error message to a user?
-        (err) => this.handleError(500, res, requestObject, cors, false)
-      );
-    }
-    res.endWithoutBody();
+    const expectedContentLength = Number(req.getHeader("content-length"));
+
+    if (!expectedContentLength)
+      return this.handleError(411, res, requestObject, cors, false);
+
+    if (expectedContentLength > this.maxBufferSize)
+      return this.handleError(413, res, requestObject, false);
+
+    readData(
+      res,
+      (data) => {
+        try {
+          const handlerData = req.__ROUTE.handler({
+            ...requestObject,
+            // TODO: Replace json parser with fastest version (library)?
+            body: req.__ROUTE.json ? JSON.parse(data) : data,
+          });
+
+          return this.handleResponse(
+            res,
+            req,
+            handlerData,
+            "application/json",
+            cors
+          );
+        } catch (ex) {
+          // TODO: Add error meta to pass error message to a user?
+          return this.handleError(500, res, requestObject, cors, false);
+        }
+      },
+      requestObject
+    );
   }
 
   addCORS(res, req, cors) {
@@ -528,43 +549,27 @@ class HTTPController {
     });
   }
 
-  readJSON(res, cb, err) {
+  readData(res, cb, requestObject) {
     let buffer;
-    /* Register data cb */
+
     res.onData((ab, isLast) => {
-      let chunk = Buffer.from(ab);
+      if (buffer > this.maxBufferSize)
+        return this.handleError(413, res, requestObject, false);
+
       if (isLast) {
-        let json;
         if (buffer) {
-          try {
-            json = JSON.parse(Buffer.concat([buffer, chunk]));
-          } catch (e) {
-            /* res.close calls onAborted */
-            res.close();
-            return;
-          }
-          cb(json);
+          cb(this.concatArrayBuffers(buffer, ab));
         } else {
-          try {
-            json = JSON.parse(chunk);
-          } catch (e) {
-            /* res.close calls onAborted */
-            res.close();
-            return;
-          }
-          cb(json);
+          cb(ab);
         }
       } else {
         if (buffer) {
-          buffer = Buffer.concat([buffer, chunk]);
+          buffer = this.concatArrayBuffers(buffer, ab);
         } else {
-          buffer = Buffer.concat([chunk]);
+          buffer = ab;
         }
       }
     });
-
-    /* Register error cb */
-    res.onAborted(err);
   }
 
   arrayJoin(array, separator = ", ", toUpper = false) {
@@ -583,6 +588,13 @@ class HTTPController {
     if (typeof variable === "string") return variable.toUpperCase();
 
     return this.arrayJoin(variable, ", ", true);
+  }
+
+  concatArrayBuffers(buffer1, buffer2) {
+    const tmp = new Uint8Array(buffer1.byteLength + buffer2.byteLength);
+    tmp.set(new Uint8Array(buffer1), 0);
+    tmp.set(new Uint8Array(buffer2), buffer1.byteLength);
+    return tmp.buffer;
   }
 
   static get METHODS() {
@@ -606,6 +618,8 @@ class HTTPController {
       304: "304 Not Modified",
       403: "403 Forbidden",
       404: "404 Not Found",
+      411: "411 Length Required",
+      413: "413 Payload Too Large",
       500: "500 Internal Server Error",
     };
   }
