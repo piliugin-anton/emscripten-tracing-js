@@ -354,7 +354,7 @@ class HTTPController {
     if (expectedContentLength > this.maxBufferSize)
       return this.handleError(413, res, requestObject, false);
 
-    readData(
+    return this.readData(
       res,
       (data) => {
         try {
@@ -368,7 +368,7 @@ class HTTPController {
             res,
             req,
             handlerData,
-            "application/json",
+            req.__ROUTE.json ? "application/json" : "text/html",
             cors
           );
         } catch (ex) {
