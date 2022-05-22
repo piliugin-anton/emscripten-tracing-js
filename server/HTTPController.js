@@ -73,12 +73,14 @@ class HTTPController {
       typeof route.cors === "string" &&
       route.cors.length;
 
+    const errors = [];
+
     if (!hasPattern) {
-      throw new Error("Route must have a pattern.");
+      errors.push("Route must have a pattern.");
     }
 
-    if (this.hasRoute(route.pattern)) {
-      throw new Error(`Route with pattern ${route.pattern} already exists!`);
+    if (this.hasRoute(route.pattern, route.method)) {
+      errors.push(`Route with pattern ${route.pattern} already exists!`);
     }
 
     if (
@@ -87,11 +89,11 @@ class HTTPController {
       !isJSONRoute &&
       !isTemplatedRoute
     ) {
-      throw new Error("Non-static routes must have a template.");
+      errors.push("Non-static routes must have a template or should be configured like JSON API.");
     }
 
     if (!isStaticRoute && !isMethodSet) {
-      throw new Error("Route methods can be a type of string or array.");
+      errors.push("Route methods can be a type of string or array.");
     }
 
     if (!isStaticRoute) {
@@ -101,7 +103,7 @@ class HTTPController {
 
       if (isMethodString) {
         if (methods.indexOf(route.method) === -1) {
-          throw new Error(`Method ${route.method} not found.`);
+          errors.push(`Method ${route.method} not found.`);
         }
 
         const notHead = route.method !== HTTPController.METHODS.HEAD;
@@ -120,7 +122,7 @@ class HTTPController {
         const methodsLength = route.method.length;
         for (let i = 0; i < methodsLength; i++) {
           if (methods.indexOf(route.method[i]) === -1) {
-            throw new Error(`Method ${route.method[i]} not found.`);
+            errors.push(`Method ${route.method[i]} not found.`);
           }
         }
 
@@ -146,14 +148,14 @@ class HTTPController {
     }
 
     if (!isStaticRoute && !isRedirectRoute && !hasHandler) {
-      throw new Error("Non-static routes must have a handler.");
+      errors.push("Non-static routes must have a handler.");
     }
 
     if (isJSONRoute && (!hasRequestSchema || !hasResponseSchema)) {
-      throw new Error(
-        "Routes with 'json' option set to 'true' must have an options 'requestSchema' and 'responseSchema' in Ajv JSON type definition (JTD) format, read more on https://ajv.js.org/json-type-definition.html"
-      );
+      errors.push("Routes with 'json' option set to 'true' must have an options 'requestSchema' and 'responseSchema' in Ajv JSON type definition (JTD) format, read more on https://ajv.js.org/json-type-definition.html");
     }
+
+    if (errors.length) throw new Error(errors.join("\n"));
 
     if (isJSONRoute) {
       route.parseJSONRequest = this.ajv.compileParser(route.requestSchema);
@@ -371,7 +373,6 @@ class HTTPController {
   // TODO: Add other data types
   handlePostRequest(res, req, requestObject, cors) {
     const expectedContentLength = Number(req.getHeader("content-length"));
-    const contentType = req.getHeader("content-type");
 
     if (!expectedContentLength)
       return this.handleError(411, res, requestObject, cors, false);
@@ -379,13 +380,13 @@ class HTTPController {
     if (expectedContentLength > this.maxBufferSize)
       return this.handleError(413, res, requestObject, cors, false);
 
-    if (req.__ROUTE.json && contentType.indexOf("json") === -1)
-      return this.handleError(400, res, requestObject, cors, false);
+    const contentType = req.getHeader("content-type");
+    const isJSONrequest = contentType.indexOf("json");
 
     return this.readData(
       res,
       (data) => {
-        if (req.__ROUTE.json) {
+        if (req.__ROUTE.json && isJSONrequest) {
           data = req.__ROUTE.parseJSONRequest(data.toString());
           if (data === undefined)
             return this.handleError(400, res, requestObject, cors, false);
@@ -405,9 +406,7 @@ class HTTPController {
           req.__ROUTE.json ? "application/json" : "text/html",
           cors
         );
-      },
-      // TODO: Add error meta to pass error message to a user?
-      (error) => error && this.handleError(500, res, requestObject, cors, false)
+      }
     );
   }
 
@@ -582,7 +581,7 @@ class HTTPController {
     });
   }
 
-  readData(res, cb, err) {
+  readData(res, cb) {
     let buffer;
 
     res.onData((ab, isLast) => {
@@ -601,8 +600,6 @@ class HTTPController {
         }
       }
     });
-
-    res.onAborted(err);
   }
 
   arrayJoin(array, separator = ", ", toUpper = false) {

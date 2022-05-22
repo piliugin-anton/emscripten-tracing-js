@@ -1,6 +1,6 @@
 const bench = require("nanobench");
 
-const genString = (length = 32) => {
+const genString = (length = 128) => {
   let result = "";
   const characters =
     "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
@@ -9,31 +9,40 @@ const genString = (length = 32) => {
     result += characters.charAt(Math.floor(Math.random() * charactersLength));
   }
 
-  return Buffer.from(result, "utf8");
+  return result;
 };
 
-const decoder = new TextDecoder();
+const loops = 100000;
 
-bench("toString", (b) => {
+bench("indexOf", (b) => {
   b.start();
 
-  for (let i = 0; i < 1000; i++) {
-    const buffer = genString();
-    const string = buffer.toString();
-    console.log(string[0]);
+  for (let i = 0; i < loops; i++) {
+    const string = genString();
+    const index = string.indexOf('a');
   }
 
   b.end();
 });
 
-bench("TextDecoder", (b) => {
+bench("includes", (b) => {
   b.start();
 
-  for (let i = 0; i < 1000; i++) {
-    const buffer = genString();
-    const string = decoder.decode(buffer);
-    console.log(string[0]);
+  for (let i = 0; i < loops; i++) {
+    const string = genString();
+    const index = string.includes('a');
   }
 
   b.end();
 });
+
+bench("regex", (b) => {
+    b.start();
+  
+    for (let i = 0; i < loops; i++) {
+      const string = genString();
+      const index = /a/i.test(string);
+    }
+  
+    b.end();
+  });
