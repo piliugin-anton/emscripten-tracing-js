@@ -14,7 +14,9 @@
   "author": "Anton Piliugin",
   "license": "ISC",
   "dependencies": {
+    "ajv": "^8.11.0",
     "eta": "^1.12.3",
+    "fast-uri": "^1.0.1",
     "mime": "^3.0.0",
     "path-to-regexp": "^6.2.1",
     "uWebSockets.js": "github:uNetworking/uWebSockets.js#v20.10.0",

@@ -2,6 +2,8 @@ const path = require("path");
 const fs = require("fs");
 const mime = require("mime");
 const { match } = require("path-to-regexp");
+const AjvJTD = require("ajv/dist/jtd");
+const fastUri = require("fast-uri");
 const { autoBind } = require("./utils.js");
 
 class HTTPController {
@@ -21,6 +23,19 @@ class HTTPController {
 
     this.rootDir = options.rootDir || path.join(__dirname, "..", "www");
     this.maxBufferSize = options.maxBufferSize || 16 * 1024 * 1024; // Default to 16Mb
+
+    const ajvDefaults = {
+      coerceTypes: "array",
+      useDefaults: true,
+      removeAdditional: true,
+      uriResolver: fastUri,
+      // Explicitly set allErrors to `false`.
+      // When set to `true`, a DoS attack is possible.
+      allErrors: false,
+    };
+
+    this.ajv = new AjvJTD(ajvDefaults);
+
     this.cors = options.cors;
     this.errorHandler =
       typeof options.errorHandler === "function" ? options.errorHandler : null;
@@ -38,6 +53,10 @@ class HTTPController {
   }
 
   addRoute(route = {}) {
+    if (this.hasRoute(route.pattern)) {
+      throw new Error(`Route with pattern ${route.pattern} already exists!`);
+    }
+
     if (
       typeof route.pattern !== "string" ||
       (!route.static &&
@@ -50,8 +69,23 @@ class HTTPController {
       );
     }
 
-    if (this.hasRoute(route.pattern)) {
-      throw new Error(`Route with pattern ${route.pattern} already exists!`);
+    if (
+      route.json &&
+      (typeof route.requestSchema !== "object" ||
+        route.requestSchema === null ||
+        typeof route.responseSchema !== "object" ||
+        route.responseSchema === null)
+    ) {
+      throw new Error(
+        "Routes with 'json' option set to 'true' must have an options 'requestSchema' and 'responseSchema' in Ajv JSON type definition (JTD) format, read more on https://ajv.js.org/json-type-definition.html"
+      );
+    }
+
+    if (route.json) {
+      route.parseJSONRequest = this.ajv.compileParser(route.requestSchema);
+      route.serializeJSONResponse = this.ajv.compileSerializer(
+        route.responseSchema
+      );
     }
 
     if (
@@ -227,11 +261,11 @@ class HTTPController {
       req.__PARAMS
     );
 
-    // Route not found
-    if (!req.__ROUTE) return this.handleError(404, res, requestObject);
-
     // CORS
     const cors = req.__ROUTE.cors || this.cors;
+
+    // Route not found
+    if (!req.__ROUTE) return this.handleError(404, res, requestObject, cors);
 
     // Allowed methods
     req.__ALLOWED_METHODS = this.getMethodsString(req.__ROUTE.method);
@@ -352,31 +386,44 @@ class HTTPController {
       return this.handleError(411, res, requestObject, cors, false);
 
     if (expectedContentLength > this.maxBufferSize)
-      return this.handleError(413, res, requestObject, false);
+      return this.handleError(413, res, requestObject, cors, false);
 
     return this.readData(
       res,
       (data) => {
         try {
+          if (req.__ROUTE.json) {
+            data = req.__ROUTE.parseJSONRequest(data);
+            if (data === undefined)
+              return this.handleError(400, res, requestObject, cors, false);
+          }
+
           const handlerData = req.__ROUTE.handler({
             ...requestObject,
-            // TODO: Replace json parser with fastest version (library)?
-            body: req.__ROUTE.json ? JSON.parse(data) : data,
+            body: data,
           });
 
           return this.handleResponse(
             res,
             req,
-            handlerData,
+            req.__ROUTE.json
+              ? req.__ROUTE.serializeJSONResponse(handlerData)
+              : handlerData,
             req.__ROUTE.json ? "application/json" : "text/html",
             cors
           );
         } catch (ex) {
+          console.log("Exception", ex);
           // TODO: Add error meta to pass error message to a user?
           return this.handleError(500, res, requestObject, cors, false);
         }
       },
-      requestObject
+      // TODO: Add error meta to pass error message to a user?
+      (error) =>
+        console.log(
+          "Error",
+          error
+        ) /*this.handleError(500, res, requestObject, cors, false)*/
     );
   }
 
@@ -549,12 +596,13 @@ class HTTPController {
     });
   }
 
-  readData(res, cb, requestObject) {
+  readData(res, cb, err) {
     let buffer;
 
+    res.onAborted(err);
+
     res.onData((ab, isLast) => {
-      if (buffer > this.maxBufferSize)
-        return this.handleError(413, res, requestObject, false);
+      if (buffer > this.maxBufferSize) return 413;
 
       if (isLast) {
         if (buffer) {
@@ -616,6 +664,7 @@ class HTTPController {
       206: "206 Partial Content",
       301: "301 Moved Permanently",
       304: "304 Not Modified",
+      400: "400 Bad Request",
       403: "403 Forbidden",
       404: "404 Not Found",
       411: "411 Length Required",

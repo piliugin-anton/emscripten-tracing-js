@@ -32,7 +32,7 @@ const shutdown = (event, dir) => {
             else {
               console.log(`File ${file.name} deleted successfully!`);
             }
-          })
+          });
         }
       });
     }
@@ -42,7 +42,7 @@ const shutdown = (event, dir) => {
 process.on("SIGINT", () => shutdown("SIGINT", dataDir));
 
 const Templates = new TemplateEngine({
-  rootDir: __dirname
+  rootDir: __dirname,
 });
 
 const HTTP = new HTTPController({
@@ -55,13 +55,16 @@ const HTTP = new HTTPController({
       404: "The page that you requested could not be found.",
       500: "It's always time for a tea break.",
     };
+
+    const message = errorMessages[code] || HTTPController.STATUSES[code];
+
     // TODO: test it
     return {
       template: "errors.eta",
       data: {
         code,
         pageTitle: HTTPController.STATUSES[code],
-        message: errorMessages[code],
+        message,
       },
     };
   },
@@ -82,10 +85,21 @@ const HTTP = new HTTPController({
     pattern: "/trace",
     method: HTTPController.METHODS.POST,
     json: true,
+    requestSchema: {
+      properties: {
+        test: { type: "boolean" },
+      },
+    },
+    responseSchema: {
+      properties: {
+        test: { type: "boolean" },
+      },
+    },
     handler: (request) => {
       console.log("POST request with JSON!");
+      return { test: true };
     },
-    cors: "*"
+    cors: "*",
   },
   {
     pattern: "/worker.js",
