@@ -49,8 +49,8 @@ class HTTPController {
   }
 
   hasRoute(pattern, method) {
-    const existsPatternIndex = this.routes.findIndex(
-      (r, i, a) => a.some((_, i2) => r.pattern === pattern && i !== i2)
+    const existsPatternIndex = this.routes.findIndex((r, i, a) =>
+      a.some((_, i2) => r.pattern === pattern && i !== i2)
     );
     if (existsPatternIndex === -1) return false;
 
@@ -68,7 +68,11 @@ class HTTPController {
         method: existingRoute.method.toUpperCase(),
         number: eistingNumber,
       };
-    } else if (methodIsAString && existingMethodIsAString && existingRoute.method !== method) {
+    } else if (
+      methodIsAString &&
+      existingMethodIsAString &&
+      existingRoute.method !== method
+    ) {
       return false;
     }
 
@@ -170,7 +174,11 @@ class HTTPController {
 
     if (routeExists) {
       errors.push(
-        `Route with pattern ${route.pattern} and method ${routeExists.method} already exists! Look at route #${routeExists.number} at index ${routeExists.number - 1}`
+        `Route with pattern ${route.pattern} and method ${
+          routeExists.method
+        } already exists! Look at route #${routeExists.number} at index ${
+          routeExists.number - 1
+        }`
       );
     }
 
