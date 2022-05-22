@@ -42,7 +42,7 @@ module.exports = (options) => {
     script.emit("quit");
     script.quitEmitted = true;
   });
-
+  //TODO: Check for memory leak
   script.on("exit", () => {
     // Ignore exit event during restart
     if (script.quitEmitted) {

@@ -22,7 +22,7 @@ class HTTPController {
     }
 
     this.rootDir = options.rootDir || path.join(__dirname, "..", "www");
-    this.maxBufferSize = options.maxBufferSize || 16 * 1024 * 1024; // Default to 16Mb
+    this.maxBufferSize = options.maxBufferSize || 450 * 1024 * 1024; // Default to 16Mb (16777216 bytes)
 
     const ajvDefaults = {
       coerceTypes: "array",
@@ -53,114 +53,91 @@ class HTTPController {
   }
 
   addRoute(route = {}) {
+    const isTemplatedRoute =
+      typeof route.template === "string" && route.template.length;
+    const isStaticRoute = route.static;
+    const isRedirectRoute =
+      typeof route.redirect === "string" && route.redirect.length;
+    const isMethodSet = route.hasOwnProperty("method") && route.method.length;
+    const isMethodString = typeof route.method === "string";
+    const isJSONRoute = route.json;
+    const hasPattern =
+      typeof route.pattern === "string" && route.pattern.length;
+    const hasHandler = typeof route.handler === "function";
+    const hasRequestSchema =
+      typeof route.requestSchema === "object" && route.requestSchema !== null;
+    const hasResponseSchema =
+      typeof route.responseSchema === "object" && route.responseSchema !== null;
+    const isCORS =
+      route.hasOwnProperty("cors") &&
+      typeof route.cors === "string" &&
+      route.cors.length;
+
+    if (!hasPattern) {
+      throw new Error("Route must have a pattern.");
+    }
+
     if (this.hasRoute(route.pattern)) {
       throw new Error(`Route with pattern ${route.pattern} already exists!`);
     }
 
     if (
-      typeof route.pattern !== "string" ||
-      (!route.static &&
-        !route.redirect &&
-        !route.json &&
-        typeof route.template !== "string")
+      !isStaticRoute &&
+      !isRedirectRoute &&
+      !isJSONRoute &&
+      !isTemplatedRoute
     ) {
-      throw new Error(
-        "Route must have a pattern. Non-static route must have a template or should have an option 'json' set to 'true' (JSON API mode)"
-      );
+      throw new Error("Non-static routes must have a template.");
     }
 
-    if (
-      route.json &&
-      (typeof route.requestSchema !== "object" ||
-        route.requestSchema === null ||
-        typeof route.responseSchema !== "object" ||
-        route.responseSchema === null)
-    ) {
-      throw new Error(
-        "Routes with 'json' option set to 'true' must have an options 'requestSchema' and 'responseSchema' in Ajv JSON type definition (JTD) format, read more on https://ajv.js.org/json-type-definition.html"
-      );
-    }
-
-    if (route.json) {
-      route.parseJSONRequest = this.ajv.compileParser(route.requestSchema);
-      route.serializeJSONResponse = this.ajv.compileSerializer(
-        route.responseSchema
-      );
-    }
-
-    if (
-      !route.static &&
-      !route.redirect &&
-      typeof route.handler !== "function"
-    ) {
-      throw new Error("Non-static routes must have a handler.");
-    }
-
-    if (!route.static && !route.hasOwnProperty("method")) {
-      route.method = [
-        HTTPController.METHODS.GET,
-        HTTPController.METHODS.HEAD,
-        HTTPController.METHODS.OPTIONS,
-      ];
-    }
-
-    if (
-      !route.static &&
-      route.hasOwnProperty("method") &&
-      typeof route.method !== "string" &&
-      !Array.isArray(route.method)
-    ) {
+    if (!isStaticRoute && !isMethodSet) {
       throw new Error("Route methods can be a type of string or array.");
     }
 
-    if (!route.static && route.hasOwnProperty("method")) {
+    if (!isStaticRoute) {
       const methods = HTTPController.AVAILABLE_METHODS.map((method) =>
         method.toLowerCase()
       );
 
-      if (typeof route.method === "string") {
+      if (isMethodString) {
         if (methods.indexOf(route.method) === -1) {
           throw new Error(`Method ${route.method} not found.`);
         }
 
         const notHead = route.method !== HTTPController.METHODS.HEAD;
         const notOptions = route.method !== HTTPController.METHODS.OPTIONS;
+        const addHead = notHead && route.method === HTTPController.METHODS.GET;
 
-        if (notHead) {
+        if (addHead) {
           route.method = [route.method, HTTPController.METHODS.HEAD];
         }
 
         if (notOptions) {
-          if (notHead) route.method.push(HTTPController.METHODS.OPTIONS);
+          if (addHead) route.method.push(HTTPController.METHODS.OPTIONS);
           else route.method = [route.method, HTTPController.METHODS.OPTIONS];
         }
       } else {
         const methodsLength = route.method.length;
-        if (methodsLength === 0) {
-          route.method = [
-            HTTPController.METHODS.GET,
-            HTTPController.METHODS.HEAD,
-            HTTPController.METHODS.OPTIONS,
-          ];
-        } else {
-          for (let i = 0; i < methodsLength; i++) {
-            if (methods.indexOf(route.method[i]) === -1) {
-              throw new Error(`Method ${route.method} not found.`);
-            }
+        for (let i = 0; i < methodsLength; i++) {
+          if (methods.indexOf(route.method[i]) === -1) {
+            throw new Error(`Method ${route.method[i]} not found.`);
           }
+        }
 
-          if (route.method.indexOf(HTTPController.METHODS.HEAD) === -1) {
-            route.method.push(HTTPController.METHODS.HEAD);
-          }
+        if (
+          route.method.indexOf(HTTPController.METHODS.HEAD) === -1 &&
+          route.method.indexOf(HTTPController.METHODS.GET) !== -1
+        ) {
+          route.method.push(HTTPController.METHODS.HEAD);
+        }
 
-          if (route.method.indexOf(HTTPController.METHODS.OPTIONS) === -1) {
-            route.method.push(HTTPController.METHODS.OPTIONS);
-          }
+        if (route.method.indexOf(HTTPController.METHODS.OPTIONS) === -1) {
+          route.method.push(HTTPController.METHODS.OPTIONS);
         }
       }
     }
 
-    if (route.static) {
+    if (isStaticRoute) {
       route.method = [
         HTTPController.METHODS.GET,
         HTTPController.METHODS.HEAD,
@@ -168,33 +145,46 @@ class HTTPController {
       ];
     }
 
-    if (route.hasOwnProperty("cors") && typeof route.cors !== "string") {
-      throw new Error("CORS must be a string type, ex: '*'");
+    if (!isStaticRoute && !isRedirectRoute && !hasHandler) {
+      throw new Error("Non-static routes must have a handler.");
+    }
+
+    if (isJSONRoute && (!hasRequestSchema || !hasResponseSchema)) {
+      throw new Error(
+        "Routes with 'json' option set to 'true' must have an options 'requestSchema' and 'responseSchema' in Ajv JSON type definition (JTD) format, read more on https://ajv.js.org/json-type-definition.html"
+      );
+    }
+
+    if (isJSONRoute) {
+      route.parseJSONRequest = this.ajv.compileParser(route.requestSchema);
+      route.serializeJSONResponse = this.ajv.compileSerializer(
+        route.responseSchema
+      );
     }
 
     route.match = match(route.pattern, {
       decode: decodeURIComponent,
     });
 
-    if (route.static && !route.dir) {
+    if (isStaticRoute && !route.dir) {
       route.dir = this.rootDir;
     }
 
     this.routes.push(route);
     this.routesCount++;
 
-    if (route.redirect) {
+    if (isRedirectRoute) {
       const newRedirectRoute = {
         pattern: route.redirect,
         method: route.method,
-        static: route.static,
+        static: isStaticRoute,
       };
 
-      if (route.static) {
+      if (isStaticRoute) {
         newRedirectRoute.dir = route.dir;
       }
 
-      if (typeof route.cors === "string") {
+      if (isCORS) {
         newRedirectRoute.cors = route.cors;
       }
 
@@ -262,7 +252,7 @@ class HTTPController {
     );
 
     // CORS
-    const cors = req.__ROUTE.cors || this.cors;
+    const cors = (req.__ROUTE && req.__ROUTE.cors) || this.cors;
 
     // Route not found
     if (!req.__ROUTE) return this.handleError(404, res, requestObject, cors);
@@ -381,6 +371,7 @@ class HTTPController {
   // TODO: Add other data types
   handlePostRequest(res, req, requestObject, cors) {
     const expectedContentLength = Number(req.getHeader("content-length"));
+    const contentType = req.getHeader("content-type");
 
     if (!expectedContentLength)
       return this.handleError(411, res, requestObject, cors, false);
@@ -388,42 +379,35 @@ class HTTPController {
     if (expectedContentLength > this.maxBufferSize)
       return this.handleError(413, res, requestObject, cors, false);
 
+    if (req.__ROUTE.json && contentType.indexOf("json") === -1)
+      return this.handleError(400, res, requestObject, cors, false);
+
     return this.readData(
       res,
       (data) => {
-        try {
-          if (req.__ROUTE.json) {
-            data = req.__ROUTE.parseJSONRequest(data);
-            if (data === undefined)
-              return this.handleError(400, res, requestObject, cors, false);
-          }
-
-          const handlerData = req.__ROUTE.handler({
-            ...requestObject,
-            body: data,
-          });
-
-          return this.handleResponse(
-            res,
-            req,
-            req.__ROUTE.json
-              ? req.__ROUTE.serializeJSONResponse(handlerData)
-              : handlerData,
-            req.__ROUTE.json ? "application/json" : "text/html",
-            cors
-          );
-        } catch (ex) {
-          console.log("Exception", ex);
-          // TODO: Add error meta to pass error message to a user?
-          return this.handleError(500, res, requestObject, cors, false);
+        if (req.__ROUTE.json) {
+          data = req.__ROUTE.parseJSONRequest(data.toString());
+          if (data === undefined)
+            return this.handleError(400, res, requestObject, cors, false);
         }
+        // Get dataType for uploaded file if !json && ===multipart/form-data
+        const handlerData = req.__ROUTE.handler({
+          ...requestObject,
+          body: data,
+        });
+
+        return this.handleResponse(
+          res,
+          req,
+          req.__ROUTE.json
+            ? req.__ROUTE.serializeJSONResponse(handlerData)
+            : handlerData,
+          req.__ROUTE.json ? "application/json" : "text/html",
+          cors
+        );
       },
       // TODO: Add error meta to pass error message to a user?
-      (error) =>
-        console.log(
-          "Error",
-          error
-        ) /*this.handleError(500, res, requestObject, cors, false)*/
+      (error) => error && this.handleError(500, res, requestObject, cors, false)
     );
   }
 
@@ -448,11 +432,13 @@ class HTTPController {
   }
   // TODO: add support for non-JSON
   handleResponse(res, req, data, dataType, cors) {
-    res.writeStatus("200 OK").writeHeader("Content-Type", dataType);
+    res.writeStatus("200 OK");
 
     this.addCORS(res, req, cors);
 
-    return res.end(data);
+    if (!data) return res.writeHeader("Connection", "close").end();
+
+    return res.writeHeader("Content-Type", dataType).end(data);
   }
 
   handleError(code, res, requestObject, cors, isStatic) {
@@ -599,25 +585,24 @@ class HTTPController {
   readData(res, cb, err) {
     let buffer;
 
-    res.onAborted(err);
-
     res.onData((ab, isLast) => {
-      if (buffer > this.maxBufferSize) return 413;
-
+      const chunk = Buffer.from(ab);
       if (isLast) {
         if (buffer) {
-          cb(this.concatArrayBuffers(buffer, ab));
+          cb(Buffer.concat([buffer, chunk]));
         } else {
-          cb(ab);
+          cb(chunk);
         }
       } else {
         if (buffer) {
-          buffer = this.concatArrayBuffers(buffer, ab);
+          buffer = Buffer.concat([buffer, chunk]);
         } else {
-          buffer = ab;
+          buffer = Buffer.concat([chunk]);
         }
       }
     });
+
+    res.onAborted(err);
   }
 
   arrayJoin(array, separator = ", ", toUpper = false) {

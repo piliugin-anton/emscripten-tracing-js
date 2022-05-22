@@ -84,7 +84,7 @@ const HTTP = new HTTPController({
   {
     pattern: "/trace",
     method: HTTPController.METHODS.POST,
-    json: true,
+    json: false,
     requestSchema: {
       properties: {
         test: { type: "boolean" },
@@ -96,8 +96,9 @@ const HTTP = new HTTPController({
       },
     },
     handler: (request) => {
-      console.log("POST request with JSON!");
-      return { test: true };
+      console.log("[server.js] POST request!");
+
+      return;
     },
     cors: "*",
   },
