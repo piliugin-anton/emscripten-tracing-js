@@ -48,8 +48,53 @@ class HTTPController {
     return this;
   }
 
-  hasRoute(pattern) {
-    return this.routes.findIndex((r) => r.pattern === pattern) !== -1;
+  hasRoute(pattern, method) {
+    const existsPatternIndex = this.routes.findIndex(
+      (r, i, a) => a.some((_, i2) => r.pattern === pattern && i !== i2)
+    );
+    if (existsPatternIndex === -1) return false;
+
+    const eistingNumber = existsPatternIndex + 1;
+    const existingRoute = this.routes[existsPatternIndex];
+    const methodIsAString = typeof method === "string";
+    const existingMethodIsAString = typeof existingRoute.method === "string";
+
+    if (
+      methodIsAString &&
+      existingMethodIsAString &&
+      existingRoute.method === method
+    ) {
+      return {
+        method: existingRoute.method.toUpperCase(),
+        number: eistingNumber,
+      };
+    } else if (methodIsAString && existingMethodIsAString && existingRoute.method !== method) {
+      return false;
+    }
+
+    const duplicateMethods = [];
+    if (!existingMethodIsAString) {
+      const existingMethodLength = existingRoute.method.length;
+      for (let i = 0; i < existingMethodLength; i++) {
+        if (method.indexOf(existingRoute.method[i]) !== -1) {
+          duplicateMethods.push(existingRoute.method[i].toUpperCase());
+        }
+      }
+    } else {
+      const methodLength = method.length;
+      for (let i = 0; i < methodLength; i++) {
+        if (existingRoute.method.indexOf(method[i]) !== -1) {
+          duplicateMethods.push(method[i].toUpperCase());
+        }
+      }
+    }
+
+    if (!duplicateMethods.length) return false;
+
+    return {
+      method: duplicateMethods.join(", "),
+      number: eistingNumber,
+    };
   }
 
   addRoute(route = {}) {
@@ -79,17 +124,15 @@ class HTTPController {
       errors.push("Route must have a pattern.");
     }
 
-    if (this.hasRoute(route.pattern, route.method)) {
-      errors.push(`Route with pattern ${route.pattern} already exists!`);
-    }
-
     if (
       !isStaticRoute &&
       !isRedirectRoute &&
       !isJSONRoute &&
       !isTemplatedRoute
     ) {
-      errors.push("Non-static routes must have a template or should be configured like JSON API.");
+      errors.push(
+        "Non-static routes must have a template or should be configured like JSON API."
+      );
     }
 
     if (!isStaticRoute && !isMethodSet) {
@@ -105,36 +148,12 @@ class HTTPController {
         if (methods.indexOf(route.method) === -1) {
           errors.push(`Method ${route.method} not found.`);
         }
-
-        const notHead = route.method !== HTTPController.METHODS.HEAD;
-        const notOptions = route.method !== HTTPController.METHODS.OPTIONS;
-        const addHead = notHead && route.method === HTTPController.METHODS.GET;
-
-        if (addHead) {
-          route.method = [route.method, HTTPController.METHODS.HEAD];
-        }
-
-        if (notOptions) {
-          if (addHead) route.method.push(HTTPController.METHODS.OPTIONS);
-          else route.method = [route.method, HTTPController.METHODS.OPTIONS];
-        }
       } else {
         const methodsLength = route.method.length;
         for (let i = 0; i < methodsLength; i++) {
           if (methods.indexOf(route.method[i]) === -1) {
             errors.push(`Method ${route.method[i]} not found.`);
           }
-        }
-
-        if (
-          route.method.indexOf(HTTPController.METHODS.HEAD) === -1 &&
-          route.method.indexOf(HTTPController.METHODS.GET) !== -1
-        ) {
-          route.method.push(HTTPController.METHODS.HEAD);
-        }
-
-        if (route.method.indexOf(HTTPController.METHODS.OPTIONS) === -1) {
-          route.method.push(HTTPController.METHODS.OPTIONS);
         }
       }
     }
@@ -147,12 +166,22 @@ class HTTPController {
       ];
     }
 
+    const routeExists = this.hasRoute(route.pattern, route.method);
+
+    if (routeExists) {
+      errors.push(
+        `Route with pattern ${route.pattern} and method ${routeExists.method} already exists! Look at route #${routeExists.number} at index ${routeExists.number - 1}`
+      );
+    }
+
     if (!isStaticRoute && !isRedirectRoute && !hasHandler) {
       errors.push("Non-static routes must have a handler.");
     }
 
     if (isJSONRoute && (!hasRequestSchema || !hasResponseSchema)) {
-      errors.push("Routes with 'json' option set to 'true' must have an options 'requestSchema' and 'responseSchema' in Ajv JSON type definition (JTD) format, read more on https://ajv.js.org/json-type-definition.html");
+      errors.push(
+        "Routes with 'json' option set to 'true' must have an options 'requestSchema' and 'responseSchema' in Ajv JSON type definition (JTD) format, read more on https://ajv.js.org/json-type-definition.html"
+      );
     }
 
     if (errors.length) throw new Error(errors.join("\n"));
@@ -383,31 +412,28 @@ class HTTPController {
     const contentType = req.getHeader("content-type");
     const isJSONrequest = contentType.indexOf("json");
 
-    return this.readData(
-      res,
-      (data) => {
-        if (req.__ROUTE.json && isJSONrequest) {
-          data = req.__ROUTE.parseJSONRequest(data.toString());
-          if (data === undefined)
-            return this.handleError(400, res, requestObject, cors, false);
-        }
-        // Get dataType for uploaded file if !json && ===multipart/form-data
-        const handlerData = req.__ROUTE.handler({
-          ...requestObject,
-          body: data,
-        });
-
-        return this.handleResponse(
-          res,
-          req,
-          req.__ROUTE.json
-            ? req.__ROUTE.serializeJSONResponse(handlerData)
-            : handlerData,
-          req.__ROUTE.json ? "application/json" : "text/html",
-          cors
-        );
+    return this.readData(res, (data) => {
+      if (req.__ROUTE.json && isJSONrequest) {
+        data = req.__ROUTE.parseJSONRequest(data.toString());
+        if (data === undefined)
+          return this.handleError(400, res, requestObject, cors, false);
       }
-    );
+      // Get dataType for uploaded file if !json && ===multipart/form-data
+      const handlerData = req.__ROUTE.handler({
+        ...requestObject,
+        body: data,
+      });
+
+      return this.handleResponse(
+        res,
+        req,
+        req.__ROUTE.json
+          ? req.__ROUTE.serializeJSONResponse(handlerData)
+          : handlerData,
+        req.__ROUTE.json ? "application/json" : "text/html",
+        cors
+      );
+    });
   }
 
   addCORS(res, req, cors) {
