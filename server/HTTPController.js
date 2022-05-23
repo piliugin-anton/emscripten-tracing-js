@@ -275,6 +275,311 @@ class HTTPController {
     App.any("/*", this.handleRequest);
   }
 
+  getController(self, res, req) {
+    const object = {
+      aborted: false,
+      readStream: {
+        stream: null,
+        promise: null,
+      },
+      responseContentType:
+        typeof req.__ROUTE.template === "string"
+          ? HTTPController.CONTENT_TYPES.HTML
+          : HTTPController.CONTENT_TYPES.JSON,
+      onAborted() {
+        this.aborted = true;
+
+        if (this.readStream.stream) this.readStream.stream.destroy();
+
+        if (this.readStream.promise) this.readStream.promise.resolve();
+      },
+      status(code) {
+        if (this.aborted) return;
+
+        res.writeStatus(HTTPController.STATUSES[code]);
+      },
+      setHeader(header, value) {
+        if (this.aborted) return;
+
+        res.writeHeader(header, value);
+      },
+      setHeaders(headers) {
+        if (this.aborted) return;
+
+        const headersLength = headers.length;
+        for (let i = 0; i < headersLength; i++) {
+          this.setHeader(...headers[i]);
+        }
+      },
+      getHeader(header) {
+        return req.getHeader(header);
+      },
+      end(data) {
+        if (this.aborted) return;
+
+        if (typeof req.__CORS === "string") {
+          this.setHeader("Access-Control-Allow-Origin", req.__CORS);
+          this.setHeader("Access-Control-Allow-Methods", req.__ALLOWED_METHODS);
+        }
+
+        if (data !== undefined) res.end(data);
+        else res.endWithoutBody();
+      },
+      head(mimeType, size) {
+        this.status(200);
+
+        this.setHeader("Content-Type", mimeType);
+        this.setHeader("Content-Length", size);
+
+        this.end();
+      },
+      options() {
+        this.status(200);
+
+        this.setHeader("Allow", req.__ALLOWED_METHODS);
+
+        this.end();
+      },
+      redirect() {
+        this.status(301);
+
+        this.setHeader("Location", req.__ROUTE.redirect);
+
+        this.end();
+      },
+      renderHTML(template, data) {
+        if (this.aborted) return;
+
+        return self.template.render(template, data);
+      },
+      error(code) {
+        // Remove static routes?
+        if (self.errorHandler) {
+          self.errorHandler(
+            req.__REQUEST_OBJECT,
+            code,
+            ({ template, data }) => {
+              let responseData = null;
+
+              if (template) {
+                responseData = this.renderHTML(template, data);
+              }
+
+              if (!responseData) responseData = HTTPController.STATUSES[code];
+
+              this.status(code);
+
+              this.setHeader("Content-Type", HTTPController.CONTENT_TYPES.HTML);
+
+              this.end(responseData);
+            }
+          );
+        } else {
+          this.status(code);
+
+          this.setHeader(
+            "Content-Type",
+            HTTPController.CONTENT_TYPES.PLAIN_TEXT
+          );
+
+          this.end(responseData);
+        }
+      },
+      reply(data) {
+        if (this.responseContentType === HTTPController.CONTENT_TYPES.HTML) {
+          const HTML = this.renderHTML(req.__ROUTE.template, data);
+          if (!HTML) return this.error(500);
+
+          data = HTML;
+        } else {
+          if (typeof req.__ROUTE.stringifyJSON === "function") {
+            data = req.__ROUTE.stringifyJSON(data);
+          } else {
+            try {
+              data = JSON.stringify(data);
+            } catch (ex) {
+              return this.error(500);
+            }
+          }
+        }
+
+        if (req.__METHOD === HTTPController.METHODS.HEAD)
+          return this.head(this.responseContentType, Buffer.byteLength(data).toString());
+
+        this.status(200);
+
+        this.setHeader("Content-Type", this.responseContentType);
+
+        this.end(data);
+      },
+      streamFile(file, stat, mimeType) {
+        this.readStream.promise = new Promise((resolve) => {
+          const ifModifiedSince = this.getHeader("if-modified-since");
+          const { mtime } = stat;
+
+          if (ifModifiedSince && new Date(ifModifiedSince) >= mtime)
+            resolve(304);
+
+          const headers = [];
+
+          headers.push(["Content-Type", mimeType]);
+
+          mtime.setMilliseconds(0);
+          const mtimeutc = mtime.toUTCString();
+          headers.push(["Last-Modified", mtimeutc]);
+
+          const range = this.getHeader("range");
+          let { size } = stat;
+          let start = 0;
+          let end = size;
+          if (req.__METHOD === HTTPController.METHODS.GET && range) {
+            const match = range.match(/bytes=([0-9]+)-([0-9]+)/);
+            const startNumber = Number(match[1]);
+            const endNumber = Number(match[2]);
+            if (startNumber < endNumber) {
+              if (startNumber > 0 && startNumber < end) {
+                start = startNumber;
+              }
+              if (endNumber > 0 && endNumber < end) {
+                end = endNumber;
+              }
+            }
+
+            headers.push(["Accept-Ranges", "bytes"]);
+            headers.push(["Content-Range", `bytes ${start}-${end}/${size}`]);
+            // TODO: test it
+            this.status(206);
+            size = end - start;
+          }
+
+          this.setHeaders(headers);
+
+          this.readStream.stream = fs.createReadStream(file, {
+            start,
+            end,
+          });
+
+          readStream.on("error", () => this.onAbortedOrFinishedStream(false));
+
+          readStream.on("data", (buffer) => {
+            /* We only take standard V8 units of data */
+            const chunk = this.toArrayBuffer(buffer);
+
+            /* Store where we are, globally, in our response */
+            const lastOffset = res.getWriteOffset();
+
+            /* Streaming a chunk returns whether that chunk was sent, and if that chunk was last */
+            const [ok, done] = res.tryEnd(chunk, size);
+
+            /* Did we successfully send last chunk? */
+            if (done) {
+              this.onAbortedOrFinishedStream(true);
+            } else if (!ok) {
+              /* If we could not send this chunk (backpressure), pause */
+              readStream.pause();
+
+              /* Save unsent chunk for when we can send it */
+              res.ab = chunk;
+              res.abOffset = lastOffset;
+
+              /* Register async handlers for drainage */
+              res.onWritable((offset) => {
+                /* Here the timeout is off, we can spend as much time before calling tryEnd we want to */
+
+                /* On failure the timeout will start */
+                const [ok, done] = res.tryEnd(
+                  res.ab.slice(offset - res.abOffset),
+                  size
+                );
+
+                if (done) {
+                  this.onAbortedOrFinishedStream(true);
+                } else if (ok) {
+                  readStream.resume();
+                }
+
+                /* We always have to return true/false in onWritable.
+                 * If you did not send anything, return true for success. */
+                return ok;
+              });
+            }
+          });
+        });
+
+        return this.readStream.promise;
+      },
+      onAbortedOrFinishedStream(trueOrFalse) {
+        if (res.__ID !== -1) {
+          if (this.readStream.stream) this.readStream.stream.destroy();
+
+          if (this.readStream.promise) {
+            if (trueOrFalse === true) {
+              this.readStream.promise.resolve();
+            } else {
+              this.readStream.promise.reject();
+            }
+          }
+        }
+        res.__ID = -1;
+      },
+      post() {
+        const expectedContentLength = Number(req.getHeader("content-length"));
+
+        if (!expectedContentLength)
+          return this.error(411);
+
+        if (expectedContentLength > this.maxBufferSize)
+          return this.error(413);
+
+        const contentType = this.getHeader("content-type");
+
+        if (
+          contentType !== HTTPController.CONTENT_TYPES.JSON &&
+          contentType !== HTTPController.CONTENT_TYPES.URLENCODED &&
+          contentType !== HTTPController.CONTENT_TYPES.FORM_DATA &&
+          contentType !== HTTPController.CONTENT_TYPES.OCTET_STREAM &&
+          contentType !== HTTPController.CONTENT_TYPES.PLAIN_TEXT
+        )
+          return this.error(400);
+
+        return this.readData(res, (data) => {
+          // Improve condition, think about templated routes
+          if (contentType === HTTPController.CONTENT_TYPES.JSON) {
+            // JSON will be parsed by AJV
+            if (typeof req.__ROUTE.parseJSON === "function") {
+              data = req.__ROUTE.parseJSON(data.toString());
+              if (data === undefined)
+                return this.error(400);
+            }
+            // Parse with JSON.parse
+            else {
+              try {
+                data = JSON.parse(data);
+              } catch (ex) {
+                return this.error(400);
+              }
+            }
+          } else if (contentType === HTTPController.CONTENT_TYPES.URLENCODED) {
+            //
+          }
+
+          return req.__ROUTE.handler(
+            { ...requestObject, body: data },
+            this.getResponseObject(
+              res,
+              req,
+              requestObject,
+              responseContentType,
+              cors
+            )
+          );
+        });
+      },
+    };
+
+    return Object.freeze(object);
+  }
+
   writeHeaders(res, headers) {
     const headersLength = headers.length;
     for (let i = 0; i < headersLength; i++) {
@@ -282,60 +587,10 @@ class HTTPController {
     }
   }
 
-  getReplyObject(res, req, requestObject, contentType, cors) {
-    const object = {
-      status(status) {
-        res.writeStatus(status);
-        return this;
-      },
-      header(header, value) {
-        res.writeHeader(header, value);
-        return this;
-      },
-      error(code) {
-        return this.handleError(
-          code,
-          res,
-          requestObject,
-          cors,
-          req.__ROUTE.static
-        );
-      },
-      reply(data) {
-        if (req.__ABORTED) return;
-
-        if (req.__ROUTE.template) {
-          const HTML = this.template.render(req.__ROUTE.template, data || {});
-          if (!HTML) return this.handleError(500, res, requestObject);
-
-          data = HTML;
-        }
-
-        // HEAD request
-        if (req.__METHOD === HTTPController.METHODS.HEAD)
-          return this.handleHeadRequest(
-            res,
-            req,
-            Buffer.byteLength(data).toString(),
-            contentType,
-            cors
-          );
-
-        this.setResponseType(res, contentType);
-        this.addCORS(res, req, cors);
-
-        return res.end(data);
-      },
-    };
-
-    return {
-      ...object,
-      error: object.error.bind(this),
-      reply: object.reply.bind(this),
-    };
-  }
-
   handleRequest(res, req) {
+    const controller = this.getController(this, res, req);
+    res.onAborted(() => controller.onAborted());
+
     // Request method
     req.__METHOD = req.getMethod();
 
@@ -361,8 +616,8 @@ class HTTPController {
       }
     }
 
-    // Generate request object
-    const requestObject = this.generateRequestObject(
+    // Get request object
+    req.__REQUEST_OBJECT = this.getRequestObject(
       req.__URL,
       req.__METHOD,
       req.__QUERY,
@@ -370,18 +625,17 @@ class HTTPController {
     );
 
     // CORS
-    const cors = (req.__ROUTE && req.__ROUTE.cors) || this.cors;
+    req.__CORS = (req.__ROUTE && req.__ROUTE.cors) || this.cors;
 
     // Route not found
-    if (!req.__ROUTE) return this.handleError(404, res, requestObject, cors);
+    if (!req.__ROUTE) return controller.error(404);
 
     // OPTIONS request
-    if (req.__METHOD === HTTPController.METHODS.OPTIONS) {
-      return this.handleOptionsRequest(res, req, cors);
-    }
+    if (req.__METHOD === HTTPController.METHODS.OPTIONS)
+      return controller.options();
 
     // Handle redirect (301)
-    if (req.__ROUTE.redirect) return this.handleRedirect(res, req, cors);
+    if (req.__ROUTE.redirect) return controller.redirect();
 
     // Static route
     if (req.__ROUTE.static) {
@@ -389,59 +643,42 @@ class HTTPController {
       const absoluteFilePath = path.join(req.__ROUTE.dir, filePath);
 
       // File not found
-      if (!fs.existsSync(absoluteFilePath))
-        return this.handleError(404, res, requestObject, cors, true);
+      if (!fs.existsSync(absoluteFilePath)) return controller.error(404);
 
       const stat = fs.statSync(absoluteFilePath, {
         bigint: false,
       });
 
       // Damn! It's not a file (it's a directory)
-      if (!stat.isFile())
-        return this.handleError(404, res, requestObject, cors, true);
+      if (!stat.isFile()) return controller.error(404);
 
       const mimeType =
         mime.getType(absoluteFilePath) || "application/octet-stream";
 
       // Head request
       if (req.__METHOD === HTTPController.METHODS.HEAD)
-        return this.handleHeadRequest(
-          res,
-          req,
-          stat.size.toString(),
-          mimeType,
-          cors
-        );
+        return this.head(mimeType, stat.size.toString());
 
       // Stream a file
       // TODO: Bundle CSS + JS
-      return this.streamFile(req, res, absoluteFilePath, stat, mimeType, cors)
+      return controller
+        .streamFile(absoluteFilePath, stat, mimeType)
         .then(
           (status) =>
-            typeof status === "string" &&
-            res.writeStatus(status).endWithoutBody()
+            typeof status === "number" && controller.status(status).end()
         )
-        .catch((err) => {
-          console.log("streamFile() exception", err);
-          return res.endWithoutBody();
-        });
+        .catch(() => controller.end());
     }
 
     // Non-static route
 
-    res.onAborted(() => (req.__ABORTED = true));
-
-    const contentType = req.__ROUTE.template
-      ? HTTPController.CONTENT_TYPES.HTML
-      : HTTPController.CONTENT_TYPES.JSON;
-
     // POST request
     if (req.__METHOD === HTTPController.METHODS.POST)
-      return this.handlePostRequest(res, req, requestObject, contentType, cors);
+      return controller.post();
 
     return req.__ROUTE.handler(
       requestObject,
-      this.getReplyObject(res, req, requestObject, contentType, cors)
+      this.getResponseObject(res, req, requestObject, contentType, cors)
     );
   }
 
@@ -456,10 +693,11 @@ class HTTPController {
   }
 
   handleHeadRequest(res, req, size, mimeType, cors) {
-    res
-      .writeStatus(HTTPController.STATUSES[200])
-      .writeHeader("Content-Type", mimeType)
-      .writeHeader("Content-Length", size);
+    res.writeStatus(HTTPController.STATUSES[200]);
+
+    this.setResponseType(res, mimeType);
+
+    res.writeHeader("Content-Length", size);
 
     this.addCORS(res, req, cors);
 
@@ -496,34 +734,38 @@ class HTTPController {
 
     return this.readData(res, (data) => {
       // Improve condition, think about templated routes
-      if (
-        contentType === HTTPController.CONTENT_TYPES.JSON &&
-        req.__ROUTE.parseJSON
-      ) {
-        data = req.__ROUTE.parseJSON(data.toString());
-        if (data === undefined)
-          return this.handleError(400, res, requestObject, cors, false);
+      if (contentType === HTTPController.CONTENT_TYPES.JSON) {
+        // JSON will be parsed by AJV
+        if (typeof req.__ROUTE.parseJSON === "function") {
+          data = req.__ROUTE.parseJSON(data.toString());
+          if (data === undefined)
+            return this.error(400, res, requestObject, cors, false);
+        }
+        // Parse with JSON.parse
+        else {
+          try {
+            data = JSON.parse(data);
+          } catch (ex) {
+            return this.handleError(400, res, requestObject, cors, false);
+          }
+        }
+      } else if (contentType === HTTPController.CONTENT_TYPES.URLENCODED) {
       }
 
       return req.__ROUTE.handler(
         { ...requestObject, body: data },
-        this.getReplyObject(res, req, requestObject, responseContentType, cors)
+        this.getResponseObject(
+          res,
+          req,
+          requestObject,
+          responseContentType,
+          cors
+        )
       );
     });
   }
 
-  setResponseType(res, type) {
-    return res.writeHeader("Content-Type", type);
-  }
-
-  addCORS(res, req, cors) {
-    if (cors) {
-      res.writeHeader("Access-Control-Allow-Origin", cors);
-      res.writeHeader("Access-Control-Allow-Methods", req.__ALLOWED_METHODS);
-    }
-  }
-
-  generateRequestObject(url, method, query, params) {
+  getRequestObject(url, method, query, params) {
     return {
       url,
       method,
@@ -535,6 +777,7 @@ class HTTPController {
       },
     };
   }
+
   // TODO: add support for non-JSON
   handleResponse(res, req, data, dataType, cors) {
     res.writeStatus("200 OK");
@@ -558,9 +801,9 @@ class HTTPController {
 
     if (!HTML) HTML = HTTPController.STATUSES[code];
 
-    res
-      .writeStatus(HTTPController.STATUSES[code])
-      .writeHeader("Content-Type", HTTPController.CONTENT_TYPES.HTML);
+    res.writeStatus(HTTPController.STATUSES[code]);
+
+    this.setResponseType(res, HTTPController.CONTENT_TYPES.HTML);
 
     this.addCORS(res, cors);
 

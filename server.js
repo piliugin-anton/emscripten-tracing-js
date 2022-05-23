@@ -48,7 +48,7 @@ const Templates = new TemplateEngine({
 const HTTP = new HTTPController({
   templateEngine: Templates,
   rootDir: path.join(__dirname, "www"),
-  errorHandler: (request, code) => {
+  errorHandler: (request, code, reply) => {
     // const { url, method, params, query } = request;
     const errorMessages = {
       403: "You tried to access a page you did not have prior authorization for.",
@@ -59,14 +59,14 @@ const HTTP = new HTTPController({
     const message = errorMessages[code] || HTTPController.STATUSES[code];
 
     // TODO: test it
-    return {
+    reply({
       template: "errors.eta",
       data: {
         code,
         pageTitle: HTTPController.STATUSES[code],
         message,
       },
-    };
+    });
   },
 }).addRoutes([
   {
