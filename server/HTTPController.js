@@ -326,6 +326,8 @@ class HTTPController {
         else res.endWithoutBody();
       },
       head(mimeType, size) {
+        if (this.aborted) return;
+
         // Dynamic route
         if (!req.__ROUTE.static)
           return req__ROUTE.handler(
@@ -341,6 +343,8 @@ class HTTPController {
         this.end();
       },
       options() {
+        if (this.aborted) return;
+
         this.status(200);
 
         this.setHeader("Allow", req.__ALLOWED_METHODS);
@@ -348,6 +352,8 @@ class HTTPController {
         this.end();
       },
       redirect() {
+        if (this.aborted) return;
+
         this.status(301);
 
         this.setHeader("Location", req.__ROUTE.redirect);
@@ -360,6 +366,8 @@ class HTTPController {
         return self.template.render(template, data);
       },
       error(code) {
+        if (this.aborted) return;
+
         // Remove static routes?
         if (self.errorHandler) {
           self.errorHandler(
@@ -393,6 +401,8 @@ class HTTPController {
         }
       },
       reply(data) {
+        if (this.aborted) return;
+
         if (this.responseContentType === HTTPController.CONTENT_TYPES.HTML) {
           const HTML = this.renderHTML(req.__ROUTE.template, data);
           if (!HTML) return this.error(500);
@@ -423,6 +433,8 @@ class HTTPController {
         this.end(data);
       },
       streamFile(file, stat, mimeType) {
+        if (this.aborted) return;
+
         this.readStream.promise = new Promise((resolve) => {
           const ifModifiedSince = this.getHeader("if-modified-since");
           const { mtime } = stat;
@@ -540,6 +552,8 @@ class HTTPController {
         res.__ID = -1;
       },
       post() {
+        if (this.aborted) return;
+
         const expectedContentLength = Number(req.getHeader("content-length"));
 
         if (!expectedContentLength) return this.error(411);
@@ -599,7 +613,9 @@ class HTTPController {
             return req.__PARAMS || {};
           },
           get query() {
-            return req.__QUERY ? new URLSearchParams(req.__QUERY) : new URLSearchParams();
+            return req.__QUERY
+              ? new URLSearchParams(req.__QUERY)
+              : new URLSearchParams();
           },
         };
 
@@ -607,26 +623,12 @@ class HTTPController {
 
         req.__ALLOWED_METHODS = this.getMethodsString(req.__ROUTE.method);
       },
-      arrayJoin(array, separator = ", ", toUpper = false) {
-        const arrayLength = array.length;
-        const lastElement = arrayLength - 1;
-        let string = "";
-        for (let i = 0; i < arrayLength; i++) {
-          const str = toUpper ? array[i].toUpperCase() : array[i];
-          string += i === lastElement ? str : str + separator;
-        }
-    
-        return string;
-      },
-      getMethodsString(variable) {
-        if (typeof variable === "string") return variable.toUpperCase();
-    
-        return this.arrayJoin(variable, ", ", true);
-      },
       getResponseObject() {},
       readData(cb) {
+        if (this.aborted) return;
+
         let buffer;
-    
+
         res.onData((ab, isLast) => {
           const chunk = Buffer.from(ab);
           if (isLast) {
@@ -643,7 +645,23 @@ class HTTPController {
             }
           }
         });
-      }
+      },
+      arrayJoin(array, separator = ", ", toUpper = false) {
+        const arrayLength = array.length;
+        const lastElement = arrayLength - 1;
+        let string = "";
+        for (let i = 0; i < arrayLength; i++) {
+          const str = toUpper ? array[i].toUpperCase() : array[i];
+          string += i === lastElement ? str : str + separator;
+        }
+
+        return string;
+      },
+      getMethodsString(variable) {
+        if (typeof variable === "string") return variable.toUpperCase();
+
+        return this.arrayJoin(variable, ", ", true);
+      },
     };
 
     return Object.freeze(object);
