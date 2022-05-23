@@ -433,13 +433,13 @@ class HTTPController {
 
     res.onAborted(() => (req.__ABORTED = true));
 
-    // POST request
-    if (req.__METHOD === HTTPController.METHODS.POST)
-      return this.handlePostRequest(res, req, requestObject, cors);
-
     const contentType = req.__ROUTE.template
       ? HTTPController.CONTENT_TYPES.HTML
       : HTTPController.CONTENT_TYPES.JSON;
+
+    // POST request
+    if (req.__METHOD === HTTPController.METHODS.POST)
+      return this.handlePostRequest(res, req, requestObject, contentType, cors);
 
     return req.__ROUTE.handler(
       requestObject,
@@ -476,7 +476,7 @@ class HTTPController {
     return res.writeHeader("Location", req.__ROUTE.redirect).endWithoutBody();
   }
   // TODO: Add other data types
-  handlePostRequest(res, req, requestObject, cors) {
+  handlePostRequest(res, req, requestObject, responseContentType, cors) {
     const expectedContentLength = Number(req.getHeader("content-length"));
 
     if (!expectedContentLength)
@@ -488,32 +488,28 @@ class HTTPController {
     const contentType = req.getHeader("content-type");
 
     if (
-      contentType !== "application/json" &&
-      contentType !== "application/x-www-form-urlencoded" &&
-      contentType !== "multipart/form-data" &&
-      contentType !== "application/octet-stream" &&
-      contentType !== "text/plain"
+      contentType !== HTTPController.CONTENT_TYPES.JSON &&
+      contentType !== HTTPController.CONTENT_TYPES.URLENCODED &&
+      contentType !== HTTPController.CONTENT_TYPES.FORM_DATA &&
+      contentType !== HTTPController.CONTENT_TYPES.OCTET_STREAM &&
+      contentType !== HTTPController.CONTENT_TYPES.PLAIN_TEXT
     )
       return this.handleError(400, res, requestObject, cors, false);
 
     return this.readData(res, (data) => {
-      if (req.__ROUTE.parseJSON && contentType === "application/json") {
+      // Improve condition, think about templated routes
+      if (
+        contentType === HTTPController.CONTENT_TYPES.JSON &&
+        req.__ROUTE.parseJSON
+      ) {
         data = req.__ROUTE.parseJSON(data.toString());
         if (data === undefined)
           return this.handleError(400, res, requestObject, cors, false);
       }
-      // Get dataType for uploaded file if !json && ===multipart/form-data
-      const handlerData = req.__ROUTE.handler({
-        ...requestObject,
-        body: data,
-      });
 
-      return this.handleResponse(
-        res,
-        req,
-        req.__ROUTE.json ? req.__ROUTE.stringifyJSON(handlerData) : handlerData,
-        req.__ROUTE.json ? "application/json" : "text/html",
-        cors
+      return req.__ROUTE.handler(
+        { ...requestObject, body: data },
+        this.getReplyObject(res, req, requestObject, responseContentType, cors)
       );
     });
   }
