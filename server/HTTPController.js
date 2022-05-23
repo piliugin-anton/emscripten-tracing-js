@@ -326,13 +326,14 @@ class HTTPController {
         else res.endWithoutBody();
       },
       head(mimeType, size) {
+        // Dynamic route
+        if (!req.__ROUTE.static)
+          return req__ROUTE.handler(
+            req.__REQUEST_OBJECT,
+            req.__RESPONSE_OBJECT
+          );
+
         this.status(200);
-
-        // Dynamic route, I guess...
-        if (!mimeType && !size) {
-          mimeType = this.responseContentType;
-
-        }
 
         this.setHeader("Content-Type", mimeType);
         this.setHeader("Content-Length", size);
@@ -680,12 +681,12 @@ class HTTPController {
     // Route not found
     if (!req.__ROUTE) return controller.error(404);
 
+    // Handle redirect (301)
+    if (req.__ROUTE.redirect) return controller.redirect();
+
     // OPTIONS request
     if (req.__METHOD === HTTPController.METHODS.OPTIONS)
       return controller.options();
-
-    // Handle redirect (301)
-    if (req.__ROUTE.redirect) return controller.redirect();
 
     // Static route
     if (req.__ROUTE.static) {
@@ -710,7 +711,6 @@ class HTTPController {
         return controller.head(mimeType, stat.size.toString());
 
       // Stream a file
-      // TODO: Bundle CSS + JS
       return controller
         .streamFile(absoluteFilePath, stat, mimeType)
         .then(
