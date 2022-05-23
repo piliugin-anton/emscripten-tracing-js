@@ -107,16 +107,20 @@ class HTTPController {
     const isStaticRoute = route.static;
     const isRedirectRoute =
       typeof route.redirect === "string" && route.redirect.length;
-    const isMethodSet = route.hasOwnProperty("method") && route.method.length;
+    const isMethodSet =
+      route.hasOwnProperty("method") &&
+      (typeof route.method === "string" || Array.isArray(route.method)) &&
+      route.method.length;
     const isMethodString = typeof route.method === "string";
-    const isJSONRoute = route.json;
-    const hasPattern =
-      typeof route.pattern === "string" && route.pattern.length;
-    const hasHandler = typeof route.handler === "function";
     const hasRequestSchema =
       typeof route.requestSchema === "object" && route.requestSchema !== null;
     const hasResponseSchema =
       typeof route.responseSchema === "object" && route.responseSchema !== null;
+    const isJSONRoute = hasRequestSchema || hasResponseSchema;
+    const hasPattern =
+      typeof route.pattern === "string" && route.pattern.length;
+    const hasHandler = typeof route.handler === "function";
+
     const isCORS =
       route.hasOwnProperty("cors") &&
       typeof route.cors === "string" &&
@@ -135,7 +139,7 @@ class HTTPController {
       !isTemplatedRoute
     ) {
       errors.push(
-        "Non-static routes must have a template or should be configured like JSON API."
+        "Non-static and non-redirect routes must have a template or should have a 'requestSchema' and/or 'responseSchema'."
       );
     }
 
@@ -148,9 +152,27 @@ class HTTPController {
         method.toLowerCase()
       );
 
+      const addHead =
+        route.method.indexOf(HTTPController.METHODS.HEAD) === -1 &&
+        route.method.indexOf(HTTPController.METHODS.GET) !== -1;
+      const addOptions =
+        route.method.indexOf(HTTPController.METHODS.OPTIONS) === -1;
+
       if (isMethodString) {
         if (methods.indexOf(route.method) === -1) {
           errors.push(`Method ${route.method} not found.`);
+        }
+
+        if (addHead) {
+          route.method = [route.method, HTTPController.METHODS.HEAD];
+        }
+
+        if (addOptions) {
+          if (addHead) {
+            route.method.push(HTTPController.METHODS.OPTIONS);
+          } else {
+            route.method = [route.method, HTTPController.METHODS.OPTIONS];
+          }
         }
       } else {
         const methodsLength = route.method.length;
@@ -158,6 +180,14 @@ class HTTPController {
           if (methods.indexOf(route.method[i]) === -1) {
             errors.push(`Method ${route.method[i]} not found.`);
           }
+        }
+
+        if (addHead) {
+          route.method.push(HTTPController.METHODS.HEAD);
+        }
+
+        if (addOptions) {
+          route.method.push(HTTPController.METHODS.OPTIONS);
         }
       }
     }
@@ -178,7 +208,7 @@ class HTTPController {
           routeExists.method
         } already exists! Look at route #${routeExists.number} at index ${
           routeExists.number - 1
-        }`
+        }.`
       );
     }
 
@@ -186,19 +216,14 @@ class HTTPController {
       errors.push("Non-static routes must have a handler.");
     }
 
-    if (isJSONRoute && (!hasRequestSchema || !hasResponseSchema)) {
-      errors.push(
-        "Routes with 'json' option set to 'true' must have an options 'requestSchema' and 'responseSchema' in Ajv JSON type definition (JTD) format, read more on https://ajv.js.org/json-type-definition.html"
-      );
-    }
-
     if (errors.length) throw new Error(errors.join("\n"));
 
-    if (isJSONRoute) {
-      route.parseJSONRequest = this.ajv.compileParser(route.requestSchema);
-      route.serializeJSONResponse = this.ajv.compileSerializer(
-        route.responseSchema
-      );
+    if (hasRequestSchema) {
+      route.parseJSON = this.ajv.compileParser(route.requestSchema);
+    }
+
+    if (hasResponseSchema) {
+      route.stringifyJSON = this.ajv.compileSerializer(route.responseSchema);
     }
 
     route.match = match(route.pattern, {
@@ -255,6 +280,59 @@ class HTTPController {
     for (let i = 0; i < headersLength; i++) {
       res.writeHeader(...headers[i]);
     }
+  }
+
+  getReplyObject(res, req, requestObject, contentType, cors) {
+    const object = {
+      status(status) {
+        res.writeStatus(status);
+        return this;
+      },
+      header(header, value) {
+        res.writeHeader(header, value);
+        return this;
+      },
+      error(code) {
+        return this.handleError(
+          code,
+          res,
+          requestObject,
+          cors,
+          req.__ROUTE.static
+        );
+      },
+      reply(data) {
+        if (req.__ABORTED) return;
+
+        if (req.__ROUTE.template) {
+          const HTML = this.template.render(req.__ROUTE.template, data || {});
+          if (!HTML) return this.handleError(500, res, requestObject);
+
+          data = HTML;
+        }
+
+        // HEAD request
+        if (req.__METHOD === HTTPController.METHODS.HEAD)
+          return this.handleHeadRequest(
+            res,
+            req,
+            Buffer.byteLength(data).toString(),
+            contentType,
+            cors
+          );
+
+        this.setResponseType(res, contentType);
+        this.addCORS(res, req, cors);
+
+        return res.end(data);
+      },
+    };
+
+    return {
+      ...object,
+      error: object.error.bind(this),
+      reply: object.reply.bind(this),
+    };
   }
 
   handleRequest(res, req) {
@@ -353,30 +431,20 @@ class HTTPController {
 
     // Non-static route
 
+    res.onAborted(() => (req.__ABORTED = true));
+
     // POST request
     if (req.__METHOD === HTTPController.METHODS.POST)
       return this.handlePostRequest(res, req, requestObject, cors);
 
-    // Get data from route handler
-    const data = req.__ROUTE.handler(requestObject);
+    const contentType = req.__ROUTE.template
+      ? HTTPController.CONTENT_TYPES.HTML
+      : HTTPController.CONTENT_TYPES.JSON;
 
-    // Render template (HTML)
-    const HTML = this.template.render(req.__ROUTE.template, data || {});
-
-    // Cannot render HTML, return 500
-    if (!HTML) return this.handleError(500, res, requestObject);
-
-    // HEAD request
-    if (req.__METHOD === HTTPController.METHODS.HEAD)
-      return this.handleHeadRequest(
-        res,
-        Buffer.byteLength(HTML).toString(),
-        "text/html",
-        cors
-      );
-
-    // Woohoo! Return HTML
-    return this.handleResponse(res, req, HTML, "text/html", cors);
+    return req.__ROUTE.handler(
+      requestObject,
+      this.getReplyObject(res, req, requestObject, contentType, cors)
+    );
   }
 
   handleOptionsRequest(res, req, cors) {
@@ -418,11 +486,19 @@ class HTTPController {
       return this.handleError(413, res, requestObject, cors, false);
 
     const contentType = req.getHeader("content-type");
-    const isJSONrequest = contentType.indexOf("json");
+
+    if (
+      contentType !== "application/json" &&
+      contentType !== "application/x-www-form-urlencoded" &&
+      contentType !== "multipart/form-data" &&
+      contentType !== "application/octet-stream" &&
+      contentType !== "text/plain"
+    )
+      return this.handleError(400, res, requestObject, cors, false);
 
     return this.readData(res, (data) => {
-      if (req.__ROUTE.json && isJSONrequest) {
-        data = req.__ROUTE.parseJSONRequest(data.toString());
+      if (req.__ROUTE.parseJSON && contentType === "application/json") {
+        data = req.__ROUTE.parseJSON(data.toString());
         if (data === undefined)
           return this.handleError(400, res, requestObject, cors, false);
       }
@@ -435,13 +511,15 @@ class HTTPController {
       return this.handleResponse(
         res,
         req,
-        req.__ROUTE.json
-          ? req.__ROUTE.serializeJSONResponse(handlerData)
-          : handlerData,
+        req.__ROUTE.json ? req.__ROUTE.stringifyJSON(handlerData) : handlerData,
         req.__ROUTE.json ? "application/json" : "text/html",
         cors
       );
     });
+  }
+
+  setResponseType(res, type) {
+    return res.writeHeader("Content-Type", type);
   }
 
   addCORS(res, req, cors) {
@@ -469,9 +547,11 @@ class HTTPController {
 
     this.addCORS(res, req, cors);
 
-    if (!data) return res.writeHeader("Connection", "close").end();
+    if (!data) return res.writeHeader("Connection", "close").endWithoutBody();
 
-    return res.writeHeader("Content-Type", dataType).end(data);
+    this.setResponseType(res, dataType);
+
+    return res.end(data);
   }
 
   handleError(code, res, requestObject, cors, isStatic) {
@@ -686,6 +766,17 @@ class HTTPController {
       411: "411 Length Required",
       413: "413 Payload Too Large",
       500: "500 Internal Server Error",
+    };
+  }
+
+  static get CONTENT_TYPES() {
+    return {
+      JSON: "application/json",
+      HTML: "text/html",
+      URLENCODED: "application/x-www-form-urlencoded",
+      FORM_DATA: "multipart/form-data",
+      OCTET_STREAM: "application/octet-stream",
+      PLAIN_TEXT: "text/plain",
     };
   }
 }
