@@ -328,6 +328,12 @@ class HTTPController {
       head(mimeType, size) {
         this.status(200);
 
+        // Dynamic route, I guess...
+        if (!mimeType && !size) {
+          mimeType = this.responseContentType;
+
+        }
+
         this.setHeader("Content-Type", mimeType);
         this.setHeader("Content-Length", size);
 
@@ -404,7 +410,10 @@ class HTTPController {
         }
 
         if (req.__METHOD === HTTPController.METHODS.HEAD)
-          return this.head(this.responseContentType, Buffer.byteLength(data).toString());
+          return this.head(
+            this.responseContentType,
+            Buffer.byteLength(data).toString()
+          );
 
         this.status(200);
 
@@ -508,6 +517,13 @@ class HTTPController {
 
         return this.readStream.promise;
       },
+      /* Helper function converting Node.js buffer to ArrayBuffer */
+      toArrayBuffer(buffer) {
+        return buffer.buffer.slice(
+          buffer.byteOffset,
+          buffer.byteOffset + buffer.byteLength
+        );
+      },
       onAbortedOrFinishedStream(trueOrFalse) {
         if (res.__ID !== -1) {
           if (this.readStream.stream) this.readStream.stream.destroy();
@@ -525,11 +541,9 @@ class HTTPController {
       post() {
         const expectedContentLength = Number(req.getHeader("content-length"));
 
-        if (!expectedContentLength)
-          return this.error(411);
+        if (!expectedContentLength) return this.error(411);
 
-        if (expectedContentLength > this.maxBufferSize)
-          return this.error(413);
+        if (expectedContentLength > this.maxBufferSize) return this.error(413);
 
         const contentType = this.getHeader("content-type");
 
@@ -548,8 +562,7 @@ class HTTPController {
             // JSON will be parsed by AJV
             if (typeof req.__ROUTE.parseJSON === "function") {
               data = req.__ROUTE.parseJSON(data.toString());
-              if (data === undefined)
-                return this.error(400);
+              if (data === undefined) return this.error(400);
             }
             // Parse with JSON.parse
             else {
@@ -575,16 +588,64 @@ class HTTPController {
           );
         });
       },
+      setRequestData() {
+        req.__QUERY = req.getQuery();
+
+        req.__REQUEST_OBJECT = {
+          url: req.__URL,
+          method: req.__METHOD,
+          get params() {
+            return req.__PARAMS || {};
+          },
+          get query() {
+            return req.__QUERY ? new URLSearchParams(req.__QUERY) : new URLSearchParams();
+          },
+        };
+
+        req.__CORS = (req.__ROUTE && req.__ROUTE.cors) || self.cors;
+
+        req.__ALLOWED_METHODS = this.getMethodsString(req.__ROUTE.method);
+      },
+      arrayJoin(array, separator = ", ", toUpper = false) {
+        const arrayLength = array.length;
+        const lastElement = arrayLength - 1;
+        let string = "";
+        for (let i = 0; i < arrayLength; i++) {
+          const str = toUpper ? array[i].toUpperCase() : array[i];
+          string += i === lastElement ? str : str + separator;
+        }
+    
+        return string;
+      },
+      getMethodsString(variable) {
+        if (typeof variable === "string") return variable.toUpperCase();
+    
+        return this.arrayJoin(variable, ", ", true);
+      },
+      getResponseObject() {},
+      readData(cb) {
+        let buffer;
+    
+        res.onData((ab, isLast) => {
+          const chunk = Buffer.from(ab);
+          if (isLast) {
+            if (buffer) {
+              cb(Buffer.concat([buffer, chunk]));
+            } else {
+              cb(chunk);
+            }
+          } else {
+            if (buffer) {
+              buffer = Buffer.concat([buffer, chunk]);
+            } else {
+              buffer = Buffer.concat([chunk]);
+            }
+          }
+        });
+      }
     };
 
     return Object.freeze(object);
-  }
-
-  writeHeaders(res, headers) {
-    const headersLength = headers.length;
-    for (let i = 0; i < headersLength; i++) {
-      res.writeHeader(...headers[i]);
-    }
   }
 
   handleRequest(res, req) {
@@ -596,8 +657,6 @@ class HTTPController {
 
     // Request URL
     req.__URL = req.getUrl();
-    // Request query
-    req.__QUERY = req.getQuery();
 
     // Trying to find a route
     for (let i = 0; i < this.routesCount; i++) {
@@ -611,21 +670,12 @@ class HTTPController {
       ) {
         req.__ROUTE = this.routes[i];
         req.__PARAMS = { ...match.params };
-        req.__ALLOWED_METHODS = this.getMethodsString(this.routes[i].method);
         break;
       }
     }
 
-    // Get request object
-    req.__REQUEST_OBJECT = this.getRequestObject(
-      req.__URL,
-      req.__METHOD,
-      req.__QUERY,
-      req.__PARAMS
-    );
-
-    // CORS
-    req.__CORS = (req.__ROUTE && req.__ROUTE.cors) || this.cors;
+    // Set request data
+    controller.setRequestData();
 
     // Route not found
     if (!req.__ROUTE) return controller.error(404);
@@ -657,7 +707,7 @@ class HTTPController {
 
       // Head request
       if (req.__METHOD === HTTPController.METHODS.HEAD)
-        return this.head(mimeType, stat.size.toString());
+        return controller.head(mimeType, stat.size.toString());
 
       // Stream a file
       // TODO: Bundle CSS + JS
@@ -672,303 +722,14 @@ class HTTPController {
 
     // Non-static route
 
+    // GET request
+    if (req.__METHOD === HTTPController.METHODS.GET) return controller.get();
+
     // POST request
-    if (req.__METHOD === HTTPController.METHODS.POST)
-      return controller.post();
+    if (req.__METHOD === HTTPController.METHODS.POST) return controller.post();
 
-    return req.__ROUTE.handler(
-      requestObject,
-      this.getResponseObject(res, req, requestObject, contentType, cors)
-    );
-  }
-
-  handleOptionsRequest(res, req, cors) {
-    res
-      .writeStatus(HTTPController.STATUSES[200])
-      .writeHeader("Allow", req.__ALLOWED_METHODS);
-
-    this.addCORS(res, req, cors);
-
-    return res.endWithoutBody();
-  }
-
-  handleHeadRequest(res, req, size, mimeType, cors) {
-    res.writeStatus(HTTPController.STATUSES[200]);
-
-    this.setResponseType(res, mimeType);
-
-    res.writeHeader("Content-Length", size);
-
-    this.addCORS(res, req, cors);
-
-    return res.endWithoutBody();
-  }
-
-  handleRedirect(res, req, cors) {
-    res.writeStatus(HTTPController.STATUSES[301]);
-
-    this.addCORS(res, req, cors);
-
-    return res.writeHeader("Location", req.__ROUTE.redirect).endWithoutBody();
-  }
-  // TODO: Add other data types
-  handlePostRequest(res, req, requestObject, responseContentType, cors) {
-    const expectedContentLength = Number(req.getHeader("content-length"));
-
-    if (!expectedContentLength)
-      return this.handleError(411, res, requestObject, cors, false);
-
-    if (expectedContentLength > this.maxBufferSize)
-      return this.handleError(413, res, requestObject, cors, false);
-
-    const contentType = req.getHeader("content-type");
-
-    if (
-      contentType !== HTTPController.CONTENT_TYPES.JSON &&
-      contentType !== HTTPController.CONTENT_TYPES.URLENCODED &&
-      contentType !== HTTPController.CONTENT_TYPES.FORM_DATA &&
-      contentType !== HTTPController.CONTENT_TYPES.OCTET_STREAM &&
-      contentType !== HTTPController.CONTENT_TYPES.PLAIN_TEXT
-    )
-      return this.handleError(400, res, requestObject, cors, false);
-
-    return this.readData(res, (data) => {
-      // Improve condition, think about templated routes
-      if (contentType === HTTPController.CONTENT_TYPES.JSON) {
-        // JSON will be parsed by AJV
-        if (typeof req.__ROUTE.parseJSON === "function") {
-          data = req.__ROUTE.parseJSON(data.toString());
-          if (data === undefined)
-            return this.error(400, res, requestObject, cors, false);
-        }
-        // Parse with JSON.parse
-        else {
-          try {
-            data = JSON.parse(data);
-          } catch (ex) {
-            return this.handleError(400, res, requestObject, cors, false);
-          }
-        }
-      } else if (contentType === HTTPController.CONTENT_TYPES.URLENCODED) {
-      }
-
-      return req.__ROUTE.handler(
-        { ...requestObject, body: data },
-        this.getResponseObject(
-          res,
-          req,
-          requestObject,
-          responseContentType,
-          cors
-        )
-      );
-    });
-  }
-
-  getRequestObject(url, method, query, params) {
-    return {
-      url,
-      method,
-      get params() {
-        return params || {};
-      },
-      get query() {
-        return query ? new URLSearchParams(query) : new URLSearchParams();
-      },
-    };
-  }
-
-  // TODO: add support for non-JSON
-  handleResponse(res, req, data, dataType, cors) {
-    res.writeStatus("200 OK");
-
-    this.addCORS(res, req, cors);
-
-    if (!data) return res.writeHeader("Connection", "close").endWithoutBody();
-
-    this.setResponseType(res, dataType);
-
-    return res.end(data);
-  }
-
-  handleError(code, res, requestObject, cors, isStatic) {
-    let HTML = null;
-
-    if (this.errorHandler && !isStatic) {
-      const { template, data } = this.errorHandler(requestObject, code);
-      HTML = this.template.render(template, data || {});
-    }
-
-    if (!HTML) HTML = HTTPController.STATUSES[code];
-
-    res.writeStatus(HTTPController.STATUSES[code]);
-
-    this.setResponseType(res, HTTPController.CONTENT_TYPES.HTML);
-
-    this.addCORS(res, cors);
-
-    return res.end(HTML);
-  }
-
-  onAbortedOrFinishedStream(res, readStream, promise) {
-    if (res.id !== -1) {
-      readStream.destroy();
-      promise();
-    }
-    res.id = -1;
-  }
-
-  /* Helper function converting Node.js buffer to ArrayBuffer */
-  toArrayBuffer(buffer) {
-    return buffer.buffer.slice(
-      buffer.byteOffset,
-      buffer.byteOffset + buffer.byteLength
-    );
-  }
-
-  streamFile(req, res, file, stat, mimeType, cors) {
-    return new Promise((resolve, reject) => {
-      const ifModifiedSince = req.getHeader("if-modified-since");
-      const { mtime } = stat;
-
-      if (ifModifiedSince && new Date(ifModifiedSince) >= mtime) {
-        // TODO: test it
-        return resolve(HTTPController.STATUSES[304]);
-      }
-
-      const headers = [];
-
-      headers.push(["Content-Type", mimeType]);
-
-      mtime.setMilliseconds(0);
-      const mtimeutc = mtime.toUTCString();
-      headers.push(["Last-Modified", mtimeutc]);
-
-      const range = req.getHeader("range");
-      let { size } = stat;
-      let start = 0;
-      let end = size;
-      if (req.__METHOD === HTTPController.METHODS.GET && range) {
-        const match = range.match(/bytes=([0-9]+)-([0-9]+)/);
-        const startNumber = Number(match[1]);
-        const endNumber = Number(match[2]);
-        if (startNumber < endNumber) {
-          if (startNumber > 0 && startNumber < end) {
-            start = startNumber;
-          }
-          if (endNumber > 0 && endNumber < end) {
-            end = endNumber;
-          }
-        }
-
-        headers.push(["Accept-Ranges", "bytes"]);
-        headers.push(["Content-Range", `bytes ${start}-${end}/${size}`]);
-        // TODO: test it
-        res.writeStatus(HTTPController.STATUSES[206]);
-        size = end - start;
-      }
-
-      if (cors) headers.push(["Access-Control-Allow-Origin", cors]);
-
-      this.writeHeaders(res, headers);
-
-      const readStream = fs.createReadStream(file, {
-        start,
-        end,
-      });
-
-      res.onAborted(() =>
-        this.onAbortedOrFinishedStream(res, readStream, () => resolve())
-      );
-
-      readStream.on("error", (err) => {
-        console.log("readStream error", err);
-        this.onAbortedOrFinishedStream(res, readStream, () => reject(err));
-      });
-
-      readStream.on("data", (buffer) => {
-        /* We only take standard V8 units of data */
-        const chunk = this.toArrayBuffer(buffer);
-
-        /* Store where we are, globally, in our response */
-        const lastOffset = res.getWriteOffset();
-
-        /* Streaming a chunk returns whether that chunk was sent, and if that chunk was last */
-        const [ok, done] = res.tryEnd(chunk, size);
-
-        /* Did we successfully send last chunk? */
-        if (done) {
-          this.onAbortedOrFinishedStream(res, readStream, () => resolve());
-        } else if (!ok) {
-          /* If we could not send this chunk (backpressure), pause */
-          readStream.pause();
-
-          /* Save unsent chunk for when we can send it */
-          res.ab = chunk;
-          res.abOffset = lastOffset;
-
-          /* Register async handlers for drainage */
-          res.onWritable((offset) => {
-            /* Here the timeout is off, we can spend as much time before calling tryEnd we want to */
-
-            /* On failure the timeout will start */
-            const [ok, done] = res.tryEnd(
-              res.ab.slice(offset - res.abOffset),
-              size
-            );
-
-            if (done) {
-              this.onAbortedOrFinishedStream(res, readStream, () => resolve());
-            } else if (ok) {
-              readStream.resume();
-            }
-
-            /* We always have to return true/false in onWritable.
-             * If you did not send anything, return true for success. */
-            return ok;
-          });
-        }
-      });
-    });
-  }
-
-  readData(res, cb) {
-    let buffer;
-
-    res.onData((ab, isLast) => {
-      const chunk = Buffer.from(ab);
-      if (isLast) {
-        if (buffer) {
-          cb(Buffer.concat([buffer, chunk]));
-        } else {
-          cb(chunk);
-        }
-      } else {
-        if (buffer) {
-          buffer = Buffer.concat([buffer, chunk]);
-        } else {
-          buffer = Buffer.concat([chunk]);
-        }
-      }
-    });
-  }
-
-  arrayJoin(array, separator = ", ", toUpper = false) {
-    const arrayLength = array.length;
-    const lastElement = arrayLength - 1;
-    let string = "";
-    for (let i = 0; i < arrayLength; i++) {
-      const str = toUpper ? array[i].toUpperCase() : array[i];
-      string += i === lastElement ? str : str + separator;
-    }
-
-    return string;
-  }
-
-  getMethodsString(variable) {
-    if (typeof variable === "string") return variable.toUpperCase();
-
-    return this.arrayJoin(variable, ", ", true);
+    // HEAD request
+    if (req.__METHOD === HTTPController.METHODS.HEAD) return controller.head();
   }
 
   static get METHODS() {
