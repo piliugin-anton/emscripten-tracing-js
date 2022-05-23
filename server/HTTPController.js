@@ -356,6 +356,7 @@ class HTTPController {
       ) {
         req.__ROUTE = this.routes[i];
         req.__PARAMS = { ...match.params };
+        req.__ALLOWED_METHODS = this.getMethodsString(this.routes[i].method);
         break;
       }
     }
@@ -373,9 +374,6 @@ class HTTPController {
 
     // Route not found
     if (!req.__ROUTE) return this.handleError(404, res, requestObject, cors);
-
-    // Allowed methods
-    req.__ALLOWED_METHODS = this.getMethodsString(req.__ROUTE.method);
 
     // OPTIONS request
     if (req.__METHOD === HTTPController.METHODS.OPTIONS) {
@@ -562,7 +560,7 @@ class HTTPController {
 
     res
       .writeStatus(HTTPController.STATUSES[code])
-      .writeHeader("Content-Type", "text/html");
+      .writeHeader("Content-Type", HTTPController.CONTENT_TYPES.HTML);
 
     this.addCORS(res, cors);
 
@@ -728,13 +726,6 @@ class HTTPController {
     if (typeof variable === "string") return variable.toUpperCase();
 
     return this.arrayJoin(variable, ", ", true);
-  }
-
-  concatArrayBuffers(buffer1, buffer2) {
-    const tmp = new Uint8Array(buffer1.byteLength + buffer2.byteLength);
-    tmp.set(new Uint8Array(buffer1), 0);
-    tmp.set(new Uint8Array(buffer2), buffer1.byteLength);
-    return tmp.buffer;
   }
 
   static get METHODS() {
