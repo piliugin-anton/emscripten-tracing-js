@@ -145,7 +145,7 @@ class HTTPController {
       errors.push("Route methods can be a type of string or array.");
     }
 
-    if (!isStaticRoute) {
+    if (!isStaticRoute && !isRedirectRoute) {
       const methods = HTTPController.AVAILABLE_METHODS.map((method) =>
         method.toLowerCase()
       );
@@ -653,7 +653,9 @@ class HTTPController {
           },
         };
 
-        req.__ALLOWED_METHODS = this.getMethodsString(req.__ROUTE.method);
+        if (req.__ROUTE) {
+          req.__ALLOWED_METHODS = this.getMethodsString(req.__ROUTE.method);
+        }
       },
       readData(cb) {
         if (this.op.aborted) return;

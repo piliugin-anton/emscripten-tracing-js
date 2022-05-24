@@ -115,11 +115,6 @@ const HTTP = new HTTPController({
     cors: "*",
   },
   {
-    pattern: "/worker",
-    method: HTTPController.METHODS.GET,
-    redirect: "/worker.js"
-  },
-  {
     pattern: "/static/(.+)",
     static: true,
   },
