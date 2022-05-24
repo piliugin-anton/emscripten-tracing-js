@@ -128,7 +128,7 @@ class HTTPController {
       errors.push("Route must have a pattern.");
     }
 
-    console.log("isRedirect", isRedirectRoute)
+    console.log("isRedirect", isRedirectRoute);
 
     if (
       !isStaticRoute &&
@@ -230,9 +230,9 @@ class HTTPController {
 
     if (!isStaticRoute && !isRedirectRoute) {
       route.contentType = isTemplatedRoute
-      ? HTTPController.CONTENT_TYPES.HTML
-      : HTTPController.CONTENT_TYPES.JSON;
-    } 
+        ? HTTPController.CONTENT_TYPES.HTML
+        : HTTPController.CONTENT_TYPES.JSON;
+    }
 
     route.match = match(route.pattern, {
       decode: decodeURIComponent,
@@ -453,7 +453,7 @@ class HTTPController {
         return new Promise((resolve, reject) => {
           this.op.readStream.promise = {
             resolve,
-            reject
+            reject,
           };
 
           const ifModifiedSince = this.getHeader("if-modified-since");
@@ -501,7 +501,9 @@ class HTTPController {
             end,
           });
 
-          this.op.readStream.stream.on("error", () => this.onAbortedOrFinishedStream(false));
+          this.op.readStream.stream.on("error", () =>
+            this.onAbortedOrFinishedStream(false)
+          );
 
           this.op.readStream.stream.on("data", (buffer) => {
             /* We only take standard V8 units of data */
@@ -707,6 +709,15 @@ class HTTPController {
     // Request method
     req.__METHOD = req.getMethod();
 
+    // Not supported request method
+    if (
+      req.__METHOD !== HTTPController.METHODS.GET &&
+      req.__METHOD !== HTTPController.METHODS.POST &&
+      req.__METHOD !== HTTPController.METHODS.OPTIONS &&
+      req.__METHOD !== HTTPController.METHODS.HEAD
+    )
+      return controller.error(501);
+
     // Request URL
     req.__URL = req.getUrl();
 
@@ -803,6 +814,7 @@ class HTTPController {
       411: "411 Length Required",
       413: "413 Payload Too Large",
       500: "500 Internal Server Error",
+      501: "501 Not Implemented"
     };
   }
 
