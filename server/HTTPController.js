@@ -450,7 +450,12 @@ class HTTPController {
       streamFile(file, stat, mimeType) {
         if (this.op.aborted) return;
 
-        this.op.readStream.promise = new Promise((resolve) => {
+        return new Promise((resolve, reject) => {
+          this.op.readStream.promise = {
+            resolve,
+            reject
+          };
+
           const ifModifiedSince = this.getHeader("if-modified-since");
           const { mtime } = stat;
 
@@ -542,8 +547,6 @@ class HTTPController {
             }
           });
         });
-
-        return this.op.readStream.promise;
       },
       /* Helper function converting Node.js buffer to ArrayBuffer */
       toArrayBuffer(buffer) {
