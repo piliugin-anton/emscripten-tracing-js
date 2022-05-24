@@ -92,7 +92,6 @@ const HTTP = new HTTPController({
   {
     pattern: "/trace",
     method: HTTPController.METHODS.POST,
-    json: true,
     requestSchema: {
       properties: {
         test: { type: "boolean" },

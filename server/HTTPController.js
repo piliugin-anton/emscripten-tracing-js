@@ -54,7 +54,7 @@ class HTTPController {
     );
     if (existsPatternIndex === -1) return false;
 
-    const eistingNumber = existsPatternIndex + 1;
+    const existingNumber = existsPatternIndex + 1;
     const existingRoute = this.routes[existsPatternIndex];
     const methodIsAString = typeof method === "string";
     const existingMethodIsAString = typeof existingRoute.method === "string";
@@ -66,7 +66,7 @@ class HTTPController {
     ) {
       return {
         method: existingRoute.method.toUpperCase(),
-        number: eistingNumber,
+        number: existingNumber,
       };
     } else if (
       methodIsAString &&
@@ -97,7 +97,7 @@ class HTTPController {
 
     return {
       method: duplicateMethods.join(", "),
-      number: eistingNumber,
+      number: existingNumber,
     };
   }
 
@@ -222,17 +222,13 @@ class HTTPController {
       route.stringifyJSON = this.ajv.compileSerializer(route.responseSchema);
     }
 
-    route.meta = {
-      IS_TEMPLATED: isTemplatedRoute,
-      RESPONSE_TYPE: isTemplatedRoute ? HTTPController.CONTENT_TYPES.HTML : HTTPController.CONTENT_TYPES.JSON,
-      ALLOWED_METHODS: this.getMethodsString(route.method)
-    };
-
-    if (hasCORS) {
-      route.meta.CORS = route.cors;
-    } else if (globalCORS) {
-      route.meta.CORS = this.cors;
+    if (!hasCORS && globalCORS) {
+      route.cors = this.cors;
     }
+
+    route.contentType = isTemplatedRoute
+      ? HTTPController.CONTENT_TYPES.HTML
+      : HTTPController.CONTENT_TYPES.JSON;
 
     route.match = match(route.pattern, {
       decode: decodeURIComponent,
@@ -288,34 +284,36 @@ class HTTPController {
 
   getController(self, res, req) {
     const object = {
-      aborted: false,
-      readStream: {
-        stream: null,
-        promise: null,
+      op: {
+        aborted: false,
+        readStream: {
+          stream: null,
+          promise: null,
+        },
       },
       onAborted() {
-        this.aborted = true;
+        this.op.aborted = true;
 
         if (this.readStream.stream) this.readStream.stream.destroy();
 
         if (this.readStream.promise) this.readStream.promise.resolve();
       },
       status(code) {
-        if (this.aborted) return;
+        if (this.op.aborted) return;
 
         res.writeStatus(HTTPController.STATUSES[code]);
 
         return this;
       },
       setHeader(header, value) {
-        if (this.aborted) return;
+        if (this.op.aborted) return;
 
         res.writeHeader(header, value);
 
         return this;
       },
       setHeaders(headers) {
-        if (this.aborted) return;
+        if (this.op.aborted) return;
 
         const headersLength = headers.length;
         for (let i = 0; i < headersLength; i++) {
@@ -328,10 +326,10 @@ class HTTPController {
         return req.getHeader(header);
       },
       end(data) {
-        if (this.aborted) return;
+        if (this.op.aborted) return;
 
-        if (typeof req.__CORS === "string") {
-          this.setHeader("Access-Control-Allow-Origin", req.__CORS);
+        if (req.__ROUTE && typeof req.__ROUTE.cors === "string") {
+          this.setHeader("Access-Control-Allow-Origin", req.__ROUTE.cors);
           this.setHeader("Access-Control-Allow-Methods", req.__ALLOWED_METHODS);
         }
 
@@ -339,7 +337,7 @@ class HTTPController {
         else res.endWithoutBody();
       },
       head(mimeType, size) {
-        if (this.aborted) return;
+        if (this.op.aborted) return;
 
         this.status(200);
 
@@ -348,17 +346,22 @@ class HTTPController {
 
         this.end();
       },
-      options() {
-        if (this.aborted) return;
+      options(server) {
+        if (this.op.aborted) return;
 
         this.status(200);
 
-        this.setHeader("Allow", req.__ALLOWED_METHODS);
+        this.setHeader(
+          "Allow",
+          server
+            ? this.getMethodsString(HTTPController.AVAILABLE_METHODS)
+            : req.__ALLOWED_METHODS
+        );
 
-        this.end();
+        this.end("");
       },
       redirect() {
-        if (this.aborted) return;
+        if (this.op.aborted) return;
 
         this.status(301);
 
@@ -367,12 +370,12 @@ class HTTPController {
         this.end();
       },
       renderHTML(template, data) {
-        if (this.aborted) return;
+        if (this.op.aborted) return;
 
         return self.template.render(template, data);
       },
       error(code) {
-        if (this.aborted) return;
+        if (this.op.aborted) return;
 
         // Remove static routes?
         if (self.errorHandler) {
@@ -407,9 +410,9 @@ class HTTPController {
         }
       },
       reply(data) {
-        if (this.aborted) return;
+        if (this.op.aborted) return;
 
-        if (this.responseContentType === HTTPController.CONTENT_TYPES.HTML) {
+        if (typeof req.__ROUTE.template === "string") {
           const HTML = this.renderHTML(req.__ROUTE.template, data);
           if (!HTML) return this.error(500);
 
@@ -439,7 +442,7 @@ class HTTPController {
         this.end(data);
       },
       streamFile(file, stat, mimeType) {
-        if (this.aborted) return;
+        if (this.op.aborted) return;
 
         this.readStream.promise = new Promise((resolve) => {
           const ifModifiedSince = this.getHeader("if-modified-since");
@@ -558,12 +561,12 @@ class HTTPController {
         res.__ID = -1;
       },
       get() {
-        if (this.aborted) return;
+        if (this.op.aborted) return;
 
         req.__ROUTE.handler(req.__REQUEST_OBJECT, {});
       },
       post() {
-        if (this.aborted) return;
+        if (this.op.aborted) return;
 
         const expectedContentLength = Number(req.getHeader("content-length"));
 
@@ -614,7 +617,7 @@ class HTTPController {
           );
         });
       },
-      setDynamicRequestData() {
+      handleDynamicRequest() {
         res.__RESPONSE_OBJECT = {
           status: this.status,
           setHeader: this.setHeader,
@@ -622,6 +625,8 @@ class HTTPController {
           getHeader: this.getHeader,
           reply: this.reply,
         };
+
+        return req.__ROUTE.handler(req.__REQUEST_OBJECT, req.__RESPONSE_OBJECT);
       },
       setRequestData() {
         req.__QUERY = req.getQuery();
@@ -638,9 +643,11 @@ class HTTPController {
               : new URLSearchParams();
           },
         };
+
+        req.__ALLOWED_METHODS = this.getMethodsString(req.__ROUTE.method);
       },
       readData(cb) {
-        if (this.aborted) return;
+        if (this.op.aborted) return;
 
         let buffer;
 
@@ -661,6 +668,22 @@ class HTTPController {
           }
         });
       },
+      arrayJoin(array, separator = ", ", toUpper = false) {
+        const arrayLength = array.length;
+        const lastElement = arrayLength - 1;
+        let string = "";
+        for (let i = 0; i < arrayLength; i++) {
+          const str = toUpper ? array[i].toUpperCase() : array[i];
+          string += i === lastElement ? str : str + separator;
+        }
+
+        return string;
+      },
+      getMethodsString(variable) {
+        if (typeof variable === "string") return variable.toUpperCase();
+
+        return this.arrayJoin(variable, ", ", true);
+      },
     };
 
     return Object.freeze(object);
@@ -675,6 +698,9 @@ class HTTPController {
 
     // Request URL
     req.__URL = req.getUrl();
+
+    if (req.__METHOD === HTTPController.METHODS.OPTIONS && req.__URL === "*")
+      return controller.options(true);
 
     // Trying to find a route
     for (let i = 0; i < this.routesCount; i++) {
@@ -738,26 +764,7 @@ class HTTPController {
     }
 
     // Non-static route
-    controller.setDynamicRequestData();
     return controller.handleDynamicRequest();
-  }
-
-  arrayJoin(array, separator = ", ", toUpper = false) {
-    const arrayLength = array.length;
-    const lastElement = arrayLength - 1;
-    let string = "";
-    for (let i = 0; i < arrayLength; i++) {
-      const str = toUpper ? array[i].toUpperCase() : array[i];
-      string += i === lastElement ? str : str + separator;
-    }
-
-    return string;
-  }
-
-  getMethodsString(variable) {
-    if (typeof variable === "string") return variable.toUpperCase();
-
-    return this.arrayJoin(variable, ", ", true);
   }
 
   static get METHODS() {
