@@ -103,14 +103,13 @@ class HTTPController {
 
   addRoute(route = {}) {
     const isTemplatedRoute =
-      typeof route.template === "string" && route.template.length;
+      typeof route.template === "string" && route.template.length !== 0;
     const isStaticRoute = route.static;
     const isRedirectRoute =
-      typeof route.redirect === "string" && route.redirect.length;
+      typeof route.redirect === "string" && route.redirect.length !== 0;
     const isMethodSet =
-      route.hasOwnProperty("method") &&
       (typeof route.method === "string" || Array.isArray(route.method)) &&
-      route.method.length;
+      route.method.length !== 0;
     const isMethodString = typeof route.method === "string";
     const hasRequestSchema =
       typeof route.requestSchema === "object" && route.requestSchema !== null;
@@ -118,13 +117,10 @@ class HTTPController {
       typeof route.responseSchema === "object" && route.responseSchema !== null;
     const isJSONRoute = hasRequestSchema || hasResponseSchema;
     const hasPattern =
-      typeof route.pattern === "string" && route.pattern.length;
+      typeof route.pattern === "string" && route.pattern.length !== 0;
     const hasHandler = typeof route.handler === "function";
-
-    const isCORS =
-      route.hasOwnProperty("cors") &&
-      typeof route.cors === "string" &&
-      route.cors.length;
+    const hasCORS = typeof route.cors === "string" && route.cors.length !== 0;
+    const globalCORS = typeof this.cors === "string" && this.cors.length !== 0;
 
     const errors = [];
 
@@ -226,6 +222,18 @@ class HTTPController {
       route.stringifyJSON = this.ajv.compileSerializer(route.responseSchema);
     }
 
+    route.meta = {
+      IS_TEMPLATED: isTemplatedRoute,
+      RESPONSE_TYPE: isTemplatedRoute ? HTTPController.CONTENT_TYPES.HTML : HTTPController.CONTENT_TYPES.JSON,
+      ALLOWED_METHODS: this.getMethodsString(route.method)
+    };
+
+    if (hasCORS) {
+      route.meta.CORS = route.cors;
+    } else if (globalCORS) {
+      route.meta.CORS = this.cors;
+    }
+
     route.match = match(route.pattern, {
       decode: decodeURIComponent,
     });
@@ -248,8 +256,10 @@ class HTTPController {
         newRedirectRoute.dir = route.dir;
       }
 
-      if (isCORS) {
+      if (hasCORS) {
         newRedirectRoute.cors = route.cors;
+      } else if (globalCORS) {
+        newRedirectRoute.cors = this.cors;
       }
 
       this.addRoute(newRedirectRoute);
@@ -272,6 +282,7 @@ class HTTPController {
   }
 
   attachTo(App) {
+    console.log(this.routes);
     App.any("/*", this.handleRequest);
   }
 
@@ -282,10 +293,6 @@ class HTTPController {
         stream: null,
         promise: null,
       },
-      responseContentType:
-        typeof req.__ROUTE.template === "string"
-          ? HTTPController.CONTENT_TYPES.HTML
-          : HTTPController.CONTENT_TYPES.JSON,
       onAborted() {
         this.aborted = true;
 
@@ -297,11 +304,15 @@ class HTTPController {
         if (this.aborted) return;
 
         res.writeStatus(HTTPController.STATUSES[code]);
+
+        return this;
       },
       setHeader(header, value) {
         if (this.aborted) return;
 
         res.writeHeader(header, value);
+
+        return this;
       },
       setHeaders(headers) {
         if (this.aborted) return;
@@ -310,6 +321,8 @@ class HTTPController {
         for (let i = 0; i < headersLength; i++) {
           this.setHeader(...headers[i]);
         }
+
+        return this;
       },
       getHeader(header) {
         return req.getHeader(header);
@@ -327,13 +340,6 @@ class HTTPController {
       },
       head(mimeType, size) {
         if (this.aborted) return;
-
-        // Dynamic route
-        if (!req.__ROUTE.static)
-          return req__ROUTE.handler(
-            req.__REQUEST_OBJECT,
-            req.__RESPONSE_OBJECT
-          );
 
         this.status(200);
 
@@ -551,6 +557,11 @@ class HTTPController {
         }
         res.__ID = -1;
       },
+      get() {
+        if (this.aborted) return;
+
+        req.__ROUTE.handler(req.__REQUEST_OBJECT, {});
+      },
       post() {
         if (this.aborted) return;
 
@@ -603,6 +614,15 @@ class HTTPController {
           );
         });
       },
+      setDynamicRequestData() {
+        res.__RESPONSE_OBJECT = {
+          status: this.status,
+          setHeader: this.setHeader,
+          setHeaders: this.setHeaders,
+          getHeader: this.getHeader,
+          reply: this.reply,
+        };
+      },
       setRequestData() {
         req.__QUERY = req.getQuery();
 
@@ -618,12 +638,7 @@ class HTTPController {
               : new URLSearchParams();
           },
         };
-
-        req.__CORS = (req.__ROUTE && req.__ROUTE.cors) || self.cors;
-
-        req.__ALLOWED_METHODS = this.getMethodsString(req.__ROUTE.method);
       },
-      getResponseObject() {},
       readData(cb) {
         if (this.aborted) return;
 
@@ -645,22 +660,6 @@ class HTTPController {
             }
           }
         });
-      },
-      arrayJoin(array, separator = ", ", toUpper = false) {
-        const arrayLength = array.length;
-        const lastElement = arrayLength - 1;
-        let string = "";
-        for (let i = 0; i < arrayLength; i++) {
-          const str = toUpper ? array[i].toUpperCase() : array[i];
-          string += i === lastElement ? str : str + separator;
-        }
-
-        return string;
-      },
-      getMethodsString(variable) {
-        if (typeof variable === "string") return variable.toUpperCase();
-
-        return this.arrayJoin(variable, ", ", true);
       },
     };
 
@@ -739,15 +738,26 @@ class HTTPController {
     }
 
     // Non-static route
+    controller.setDynamicRequestData();
+    return controller.handleDynamicRequest();
+  }
 
-    // GET request
-    if (req.__METHOD === HTTPController.METHODS.GET) return controller.get();
+  arrayJoin(array, separator = ", ", toUpper = false) {
+    const arrayLength = array.length;
+    const lastElement = arrayLength - 1;
+    let string = "";
+    for (let i = 0; i < arrayLength; i++) {
+      const str = toUpper ? array[i].toUpperCase() : array[i];
+      string += i === lastElement ? str : str + separator;
+    }
 
-    // POST request
-    if (req.__METHOD === HTTPController.METHODS.POST) return controller.post();
+    return string;
+  }
 
-    // HEAD request
-    if (req.__METHOD === HTTPController.METHODS.HEAD) return controller.head();
+  getMethodsString(variable) {
+    if (typeof variable === "string") return variable.toUpperCase();
+
+    return this.arrayJoin(variable, ", ", true);
   }
 
   static get METHODS() {
