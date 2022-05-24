@@ -573,11 +573,6 @@ class HTTPController {
         }
         res.__ID = -1;
       },
-      get() {
-        if (this.op.aborted) return;
-
-        req.__ROUTE.handler(req.__REQUEST_OBJECT, {});
-      },
       post() {
         if (this.op.aborted) return;
 
@@ -635,11 +630,13 @@ class HTTPController {
           status: this.status.bind(this),
           setHeader: this.setHeader.bind(this),
           setHeaders: this.setHeaders.bind(this),
-          getHeader: this.getHeader.bind(this),
           reply: this.reply.bind(this),
         };
 
-        if (req.__METHOD === HTTPController.METHODS.GET)
+        if (
+          req.__METHOD === HTTPController.METHODS.GET ||
+          req.__METHOD === HTTPController.METHODS.HEAD
+        )
           return req.__ROUTE.handler(
             req.__REQUEST_OBJECT,
             res.__REQUEST_OBJECT
@@ -659,6 +656,7 @@ class HTTPController {
               ? new URLSearchParams(req.__QUERY)
               : new URLSearchParams();
           },
+          getHeader: this.getHeader.bind(this),
         };
 
         if (req.__ROUTE) {
