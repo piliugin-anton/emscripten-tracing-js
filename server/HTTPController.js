@@ -282,7 +282,6 @@ class HTTPController {
   }
 
   attachTo(App) {
-    console.log(this.routes);
     App.any("/*", this.handleRequest);
   }
 
@@ -290,6 +289,7 @@ class HTTPController {
     const object = {
       op: {
         aborted: false,
+        isStatusSet: false,
         readStream: {
           stream: null,
           promise: null,
@@ -303,9 +303,11 @@ class HTTPController {
         if (this.op.readStream.promise) this.op.readStream.promise.resolve();
       },
       status(code) {
-        if (this.op.aborted) return;
+        if (this.op.aborted || this.op.isStatusSet) return;
 
         res.writeStatus(HTTPController.STATUSES[code]);
+
+        this.op.isStatusSet = true;
 
         return this;
       },
@@ -629,15 +631,19 @@ class HTTPController {
         });
       },
       handleDynamicRequest() {
-        res.__RESPONSE_OBJECT = {
-          status: this.status,
-          setHeader: this.setHeader,
-          setHeaders: this.setHeaders,
-          getHeader: this.getHeader,
-          reply: this.reply,
+        res.__REQUEST_OBJECT = {
+          status: this.status.bind(this),
+          setHeader: this.setHeader.bind(this),
+          setHeaders: this.setHeaders.bind(this),
+          getHeader: this.getHeader.bind(this),
+          reply: this.reply.bind(this),
         };
 
-        return req.__ROUTE.handler(req.__REQUEST_OBJECT, req.__RESPONSE_OBJECT);
+        if (req.__METHOD === HTTPController.METHODS.GET)
+          return req.__ROUTE.handler(
+            req.__REQUEST_OBJECT,
+            res.__REQUEST_OBJECT
+          );
       },
       setRequestData() {
         req.__QUERY = req.getQuery();
@@ -755,8 +761,10 @@ class HTTPController {
 
     // Static route
     if (req.__ROUTE.static) {
-      const filePath = req.__URL.split("/").join(path.sep);
-      const absoluteFilePath = path.join(req.__ROUTE.dir, filePath);
+      const absoluteFilePath = path.join(
+        req.__ROUTE.dir,
+        req.__URL.split("/").join(path.sep)
+      );
 
       // File not found
       if (!fs.existsSync(absoluteFilePath)) return controller.error(404);
@@ -814,7 +822,7 @@ class HTTPController {
       411: "411 Length Required",
       413: "413 Payload Too Large",
       500: "500 Internal Server Error",
-      501: "501 Not Implemented"
+      501: "501 Not Implemented",
     };
   }
 

@@ -74,19 +74,11 @@ const HTTP = new HTTPController({
     method: HTTPController.METHODS.GET,
     template: "index.eta",
     handler: (request, response) => {
-      setTimeout(() => {
-        response.reply({
-          title: "Sessions",
-          pageTitle: "Sessions",
-          //sessions: [],
-        });
-      }, 10000);
-      /*
-      return {
+      response.reply({
         title: "Sessions",
-        pageTitle: "Sessions" /*,
-        sessions: [],
-      };*/
+        pageTitle: "Sessions",
+        //sessions: [],
+      });
     },
   },
   {
