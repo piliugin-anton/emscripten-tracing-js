@@ -128,6 +128,8 @@ class HTTPController {
       errors.push("Route must have a pattern.");
     }
 
+    console.log("isRedirect", isRedirectRoute)
+
     if (
       !isStaticRoute &&
       !isRedirectRoute &&
@@ -226,9 +228,11 @@ class HTTPController {
       route.cors = this.cors;
     }
 
-    route.contentType = isTemplatedRoute
+    if (!isStaticRoute && !isRedirectRoute) {
+      route.contentType = isTemplatedRoute
       ? HTTPController.CONTENT_TYPES.HTML
       : HTTPController.CONTENT_TYPES.JSON;
+    } 
 
     route.match = match(route.pattern, {
       decode: decodeURIComponent,
@@ -241,7 +245,7 @@ class HTTPController {
     this.routes.push(route);
     this.routesCount++;
 
-    if (isRedirectRoute) {
+    /*if (isRedirectRoute) {
       const newRedirectRoute = {
         pattern: route.redirect,
         method: route.method,
@@ -259,7 +263,7 @@ class HTTPController {
       }
 
       this.addRoute(newRedirectRoute);
-    }
+    }*/
 
     return this;
   }
@@ -294,9 +298,9 @@ class HTTPController {
       onAborted() {
         this.op.aborted = true;
 
-        if (this.readStream.stream) this.readStream.stream.destroy();
+        if (this.op.readStream.stream) this.op.readStream.stream.destroy();
 
-        if (this.readStream.promise) this.readStream.promise.resolve();
+        if (this.op.readStream.promise) this.op.readStream.promise.resolve();
       },
       status(code) {
         if (this.op.aborted) return;
@@ -357,8 +361,9 @@ class HTTPController {
             ? this.getMethodsString(HTTPController.AVAILABLE_METHODS)
             : req.__ALLOWED_METHODS
         );
+        this.setHeader("Content-Length", "0");
 
-        this.end("");
+        this.end();
       },
       redirect() {
         if (this.op.aborted) return;
@@ -366,6 +371,7 @@ class HTTPController {
         this.status(301);
 
         this.setHeader("Location", req.__ROUTE.redirect);
+        this.setHeader("Content-Length", "0");
 
         this.end();
       },
@@ -444,7 +450,7 @@ class HTTPController {
       streamFile(file, stat, mimeType) {
         if (this.op.aborted) return;
 
-        this.readStream.promise = new Promise((resolve) => {
+        this.op.readStream.promise = new Promise((resolve) => {
           const ifModifiedSince = this.getHeader("if-modified-since");
           const { mtime } = stat;
 
@@ -463,7 +469,7 @@ class HTTPController {
           let { size } = stat;
           let start = 0;
           let end = size;
-          if (req.__METHOD === HTTPController.METHODS.GET && range) {
+          if (range) {
             const match = range.match(/bytes=([0-9]+)-([0-9]+)/);
             const startNumber = Number(match[1]);
             const endNumber = Number(match[2]);
@@ -485,14 +491,14 @@ class HTTPController {
 
           this.setHeaders(headers);
 
-          this.readStream.stream = fs.createReadStream(file, {
+          this.op.readStream.stream = fs.createReadStream(file, {
             start,
             end,
           });
 
-          readStream.on("error", () => this.onAbortedOrFinishedStream(false));
+          this.op.readStream.stream.on("error", () => this.onAbortedOrFinishedStream(false));
 
-          readStream.on("data", (buffer) => {
+          this.op.readStream.stream.on("data", (buffer) => {
             /* We only take standard V8 units of data */
             const chunk = this.toArrayBuffer(buffer);
 
@@ -507,7 +513,7 @@ class HTTPController {
               this.onAbortedOrFinishedStream(true);
             } else if (!ok) {
               /* If we could not send this chunk (backpressure), pause */
-              readStream.pause();
+              this.op.readStream.stream.pause();
 
               /* Save unsent chunk for when we can send it */
               res.ab = chunk;
@@ -526,7 +532,7 @@ class HTTPController {
                 if (done) {
                   this.onAbortedOrFinishedStream(true);
                 } else if (ok) {
-                  readStream.resume();
+                  this.op.readStream.stream.resume();
                 }
 
                 /* We always have to return true/false in onWritable.
@@ -537,7 +543,7 @@ class HTTPController {
           });
         });
 
-        return this.readStream.promise;
+        return this.op.readStream.promise;
       },
       /* Helper function converting Node.js buffer to ArrayBuffer */
       toArrayBuffer(buffer) {
@@ -548,13 +554,13 @@ class HTTPController {
       },
       onAbortedOrFinishedStream(trueOrFalse) {
         if (res.__ID !== -1) {
-          if (this.readStream.stream) this.readStream.stream.destroy();
+          if (this.op.readStream.stream) this.op.readStream.stream.destroy();
 
-          if (this.readStream.promise) {
+          if (this.op.readStream.promise) {
             if (trueOrFalse === true) {
-              this.readStream.promise.resolve();
+              this.op.readStream.promise.resolve();
             } else {
-              this.readStream.promise.reject();
+              this.op.readStream.promise.reject();
             }
           }
         }
