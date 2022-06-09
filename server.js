@@ -38,14 +38,16 @@ const uquik = new Server({
 
 const static = StaticFiles({ root: path.join(__dirname, "www")});
 
+uquik.use(CORS({
+  methods: ["GET", "HEAD", "POST"],
+  allowedHeaders: ["content-type", "emscripten-tracing-js"]
+}))
+
 uquik.get("/worker.js", static);
 uquik.head("/worker.js", static);
-uquik.use("/worker.js", CORS());
 
-uquik.options("/trace/:version/:session", CORS({ methods: ["POST"] }));
-uquik.post("/trace/:version/:session", (request, response) => {});
+uquik.post("/trace/:version/:session", { max_body_length: 33554432 }, (request, response) => response.json({ ok: true }));
 uquik.use("/trace/", (request, response, next) => next());
-uquik.use("/trace/", CORS({ methods: ["POST"] }));
 
 uquik.get("/static/*", static);
 uquik.head("/static/*", static);
