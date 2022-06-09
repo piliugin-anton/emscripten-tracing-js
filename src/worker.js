@@ -67,7 +67,7 @@ class Tracing {
     if (this.queue.length === 0 || !this.session || !this.version) return;
 
     this.client.post(
-      `/trace?session=${this.session}&version=${this.version}`,
+      `/trace/${this.version}/${this.session}`,
       this._arrayJoin(this.queue, "\n")
     ).then((res) => console.log("Success", res))
     .catch((error) => console.log(error));

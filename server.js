@@ -37,11 +37,11 @@ const uquik = new Server({
 });
 
 const static = StaticFiles({ root: path.join(__dirname, "www")});
-const cors = CORS();
+
+uquik.use(CORS())
 
 uquik.get("/worker.js", static);
 uquik.head("/worker.js", static);
-uquik.use("/worker.js", cors);
 
 uquik.get("/static/*", static);
 uquik.head("/static/*", static);
@@ -53,8 +53,7 @@ uquik.get("/", (request, response) => response.html(Templates.render("index.eta"
 })));
 uquik.use("/", (request, response, next) => next());
 
-uquik.post("/trace", (request, response) => {});
-uquik.use("/trace", cors);
+uquik.post("/trace/:version/:session", (request, response) => {});
 uquik.use("/trace", (request, response, next) => next());
 
 uquik
