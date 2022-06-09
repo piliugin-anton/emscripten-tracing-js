@@ -75,7 +75,7 @@ class Tracing {
         }
       }
     ).then(({data}) => data.length && this.queue.splice(0, data.length))
-    .catch((error) => console.log(error));
+    .catch((error) => this._scheduleSend(100));
   }
 }
 
