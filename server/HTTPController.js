@@ -282,7 +282,18 @@ class HTTPController {
   }
 
   attachTo(App) {
-    App.any("/*", this.handleRequest);
+    for (let i = 0; i < this.routesCount; i++) {
+      const route = this.routes[i];
+      if (typeof route.method === "string") {
+        App[route.method](route.pattern, this.handleRequest);
+      } else {
+        const methodsLength = route.method.length;
+        for (let x = 0; x < methodsLength; x++) {
+          App[route.method[x]](route.pattern, this.handleRequest);
+        }
+      }
+    }
+    //App.any("/*", this.handleRequest);
   }
 
   getController(self, res, req) {
@@ -576,12 +587,6 @@ class HTTPController {
       post() {
         if (this.op.aborted) return;
 
-        const expectedContentLength = Number(req.getHeader("content-length"));
-
-        if (!expectedContentLength) return this.error(411);
-
-        if (expectedContentLength > this.maxBufferSize) return this.error(413);
-
         const contentType = this.getHeader("content-type");
 
         if (
@@ -592,6 +597,13 @@ class HTTPController {
           contentType !== HTTPController.CONTENT_TYPES.PLAIN_TEXT
         )
           return this.error(400);
+
+        const expectedContentLength = Number(req.getHeader("content-length"));
+
+        if (!expectedContentLength) return this.error(411);
+
+        if (expectedContentLength > this.maxBufferSize) return this.error(413);
+
 
         return this.readData(res, (data) => {
           // Improve condition, think about templated routes
@@ -633,6 +645,7 @@ class HTTPController {
           reply: this.reply.bind(this),
         };
 
+        // GET, HEAD requests
         if (
           req.__METHOD === HTTPController.METHODS.GET ||
           req.__METHOD === HTTPController.METHODS.HEAD
@@ -641,6 +654,9 @@ class HTTPController {
             req.__REQUEST_OBJECT,
             res.__REQUEST_OBJECT
           );
+        
+        // POST request
+        if (req.__METHOD === HTTPController.METHODS.POST) return this.post();
       },
       setRequestData() {
         req.__QUERY = req.getQuery();

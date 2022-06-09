@@ -1,27 +1,13 @@
-const uWS = require("uWebSockets.js");
 const fs = require("fs");
 const path = require("path");
-const WebSocketController = require("./server/WebSocketController");
-const HTTPController = require("./server/HTTPController.js");
+const { Server, StaticFiles, CORS } = require("uquik")
 const TemplateEngine = require("./server/TemplateEngine.js");
 
 const port = 5000;
-let serverToken = null;
 
 const dataDir = path.join(__dirname, "data");
 
-const WS = new WebSocketController({
-  compression: uWS.SHARED_COMPRESSOR,
-  dir: dataDir,
-});
-
-const shutdown = (event, dir) => {
-  if (serverToken) {
-    console.log("Shutting down the server...");
-    uWS.us_listen_socket_close(serverToken);
-  }
-  console.log(`[${event}] Removing files...`);
-
+const cleanup = (dir) => {
   fs.readdir(dir, { withFileTypes: true }, (err, files) => {
     if (err) console.log(err);
     else {
@@ -39,89 +25,35 @@ const shutdown = (event, dir) => {
   });
 };
 
-process.on("SIGINT", () => shutdown("SIGINT", dataDir));
+process.on("SIGINT", () => cleanup(dataDir));
 
 const Templates = new TemplateEngine({
   rootDir: __dirname,
 });
 
-const HTTP = new HTTPController({
-  templateEngine: Templates,
-  rootDir: path.join(__dirname, "www"),
-  errorHandler: (request, code, reply) => {
-    // const { url, method, params, query } = request;
-    const errorMessages = {
-      403: "You tried to access a page you did not have prior authorization for.",
-      404: "The page that you requested could not be found.",
-      500: "It's always time for a tea break.",
-    };
-
-    const message = errorMessages[code] || HTTPController.STATUSES[code];
-
-    // TODO: test it
-    reply({
-      template: "errors.eta",
-      data: {
-        code,
-        pageTitle: HTTPController.STATUSES[code],
-        message,
-      },
-    });
-  },
-}).addRoutes([
-  {
-    pattern: "/",
-    method: HTTPController.METHODS.GET,
-    template: "index.eta",
-    handler: (request, response) => {
-      response.reply({
-        title: "Sessions",
-        pageTitle: "Sessions",
-        //sessions: [],
-      });
-    },
-  },
-  {
-    pattern: "/trace",
-    method: HTTPController.METHODS.POST,
-    requestSchema: {
-      properties: {
-        test: { type: "boolean" },
-      },
-    },
-    responseSchema: {
-      properties: {
-        test: { type: "boolean" },
-      },
-    },
-    handler: (request) => {
-      console.log("[server.js] POST request!");
-
-      return;
-    },
-    cors: "*",
-  },
-  {
-    pattern: "/worker.js",
-    static: true,
-    cors: "*",
-  },
-  {
-    pattern: "/static/(.+)",
-    static: true,
-  },
-]);
-
-const App = uWS.App();
-
-//WS.attachTo(App);
-HTTP.attachTo(App);
-
-App.listen(port, (token) => {
-  if (token) {
-    console.log("Listening to port " + port);
-    serverToken = token;
-  } else {
-    console.log("Failed to listen to port " + port);
-  }
+const uquik = new Server({
+  json_errors: true
 });
+
+const static = StaticFiles({ root: path.join(__dirname, "www")})
+
+uquik.get("/worker.js", static)
+uquik.head("/worker.js", static)
+uquik.use("/worker.js", CORS())
+
+uquik.any("/static/*", static)
+
+uquik.get("/", (request, response) => response.html(Templates.render("index.eta", {
+  title: "Sessions",
+  pageTitle: "Sessions",
+  //sessions: []
+})))
+uquik.use("/", (request, response, next) => next())
+
+uquik.post("/trace", (request, response) => {})
+uquik.use("/trace", (request, response, next) => next())
+
+uquik
+  .listen(5000, "127.0.0.1")
+  .then((socket) => console.log("[uQuik] Server started"))
+  .catch((error) => console.log("[uQuik] Failed to start a server", error));

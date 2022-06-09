@@ -6,7 +6,8 @@
   "scripts": {
     "bundle": "gulp",
     "dev": "cross-env NODE_ENV=development gulp",
-    "start": "cross-env NODE_ENV=production node server.js"
+    "start": "cross-env NODE_ENV=production node server.js",
+    "benchmark": "autocannon -c 100 -d 40 -p 10 127.0.0.1:5000"
   },
   "keywords": [
     "Emscripten"
@@ -14,16 +15,12 @@
   "author": "Anton Piliugin",
   "license": "ISC",
   "dependencies": {
-    "ajv": "^8.11.0",
     "eta": "^1.12.3",
-    "fast-uri": "^1.0.1",
-    "mime": "^3.0.0",
-    "path-to-regexp": "^6.2.1",
-    "uWebSockets.js": "github:uNetworking/uWebSockets.js#v20.10.0",
-    "websocket-reconnect-pro": "^1.6.0"
+    "uquik": "^1.0.16"
   },
   "devDependencies": {
-    "@babel/preset-env": "^7.17.12",
+    "@babel/preset-env": "^7.18.2",
+    "autocannon": "^7.9.0",
     "axios": "^0.27.2",
     "babelify": "^10.0.0",
     "browserify": "^17.0.0",
