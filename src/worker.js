@@ -7,7 +7,7 @@ class Tracing {
     this.timeout = null;
     this.client = null;
     this.queue = [];
-    this.SEND_TIMEOUT = 500;
+    this.SEND_TIMEOUT = 0;
     this.DESTROY_TIMEOUT = 1000;
   }
 
