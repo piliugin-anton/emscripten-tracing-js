@@ -4,6 +4,7 @@ const { Server, StaticFiles, CORS } = require("uquik")
 const TemplateEngine = require("./server/TemplateEngine.js");
 
 const port = 5000;
+const host = "127.0.0.1";
 
 const dataDir = path.join(__dirname, "data");
 
@@ -35,28 +36,28 @@ const uquik = new Server({
   json_errors: true
 });
 
-const static = StaticFiles({ root: path.join(__dirname, "www")})
-const cors = CORS()
+const static = StaticFiles({ root: path.join(__dirname, "www")});
+const cors = CORS();
 
-uquik.get("/worker.js", static)
-uquik.head("/worker.js", static)
-uquik.use("/worker.js", cors)
+uquik.get("/worker.js", static);
+uquik.head("/worker.js", static);
+uquik.use("/worker.js", cors);
 
-uquik.get("/static/*", static)
-uquik.head("/static/*", static)
+uquik.get("/static/*", static);
+uquik.head("/static/*", static);
 
 uquik.get("/", (request, response) => response.html(Templates.render("index.eta", {
   title: "Sessions",
   pageTitle: "Sessions",
   //sessions: []
-})))
-uquik.use("/", (request, response, next) => next())
+})));
+uquik.use("/", (request, response, next) => next());
 
-uquik.post("/trace", (request, response) => {})
-uquik.use("/trace", cors)
-uquik.use("/trace", (request, response, next) => next())
+uquik.post("/trace", (request, response) => {});
+uquik.use("/trace", cors);
+uquik.use("/trace", (request, response, next) => next());
 
 uquik
-  .listen(5000, "127.0.0.1")
+  .listen(port, host)
   .then((socket) => console.log("[uQuik] Server started"))
   .catch((error) => console.log("[uQuik] Failed to start a server", error));
