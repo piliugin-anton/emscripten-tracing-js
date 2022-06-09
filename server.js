@@ -1,6 +1,6 @@
 const fs = require("fs");
 const path = require("path");
-const { Server, StaticFiles, CORS } = require("uquik")
+const { Server, StaticFiles, CORS } = require("uquik");
 const TemplateEngine = require("./server/TemplateEngine.js");
 
 const port = 5000;
@@ -33,32 +33,51 @@ const Templates = new TemplateEngine({
 });
 
 const uquik = new Server({
-  json_errors: true
+  json_errors: true,
 });
 
-const static = StaticFiles({ root: path.join(__dirname, "www")});
+const static = StaticFiles({ root: path.join(__dirname, "www") });
 
-uquik.use(CORS({
-  methods: ["GET", "HEAD", "POST"],
-  allowedHeaders: ["content-type", "emscripten-tracing-js"]
-}))
+uquik.use(
+  CORS({
+    methods: ["GET", "HEAD", "POST"],
+    allowedHeaders: ["content-type", "emscripten-tracing-js"],
+  })
+);
 
 uquik.get("/worker.js", static);
 uquik.head("/worker.js", static);
 
-uquik.post("/trace/:version/:session", { max_body_length: 33554432 }, (request, response) => response.json({ ok: true }));
-uquik.use("/trace/", (request, response, next) => next());
+uquik.post(
+  "/trace/:version/:session",
+  { max_body_length: 33554432 },
+  (request, response) => response.json({ ok: true })
+);
+uquik.use("/trace/", (request, response, next) => {
+  const version = request.path_parameters.get("version");
+  const session = request.path_parameters.get("session");
+  const fileName = `${session}_${version}.emscripten`;
+  const writeStream = fs.createWriteStream(path.join(dataDir, fileName), { flags: "a" });
+  request.once('end', () => {
+    if (!writeStream.destroyed) writeStream.destroy();
+    next();
+  });
+  request.pipe(writeStream);
+});
 
 uquik.get("/static/*", static);
 uquik.head("/static/*", static);
 
-uquik.get("/", (request, response) => response.html(Templates.render("index.eta", {
-  title: "Sessions",
-  pageTitle: "Sessions",
-  //sessions: []
-})));
+uquik.get("/", (request, response) =>
+  response.html(
+    Templates.render("index.eta", {
+      title: "Sessions",
+      pageTitle: "Sessions",
+      //sessions: []
+    })
+  )
+);
 uquik.use("/", (request, response, next) => next());
-
 
 uquik
   .listen(port, host)
