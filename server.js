@@ -42,7 +42,8 @@ uquik.get("/worker.js", static)
 uquik.head("/worker.js", static)
 uquik.use("/worker.js", cors)
 
-uquik.any("/static/*", static)
+uquik.get("/static/*", static)
+uquik.head("/static/*", static)
 
 uquik.get("/", (request, response) => response.html(Templates.render("index.eta", {
   title: "Sessions",
