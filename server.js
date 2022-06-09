@@ -1,6 +1,6 @@
 const fs = require("fs");
 const path = require("path");
-const { Server, StaticFiles, CORS } = require("uquik");
+const { Server, StaticFiles, CORS, CustomError } = require("uquik");
 const TemplateEngine = require("./server/TemplateEngine.js");
 
 const port = 5000;
@@ -54,6 +54,10 @@ uquik.post(
   (request, response) => response.json({ length: Number(request.headers.get("emscripten-data-length")) })
 );
 uquik.use("/trace/", (request, response, next) => {
+  const contentType = request.headers.get("content-type");
+  const isEmscripten = request.headers.get("emscripten-tracing-js");
+  if (!isEmscripten || contentType !== "text/emscripten-data") return next(new CustomError("Incorrect input data", 400));
+
   const version = request.path_parameters.get("version");
   const session = request.path_parameters.get("session");
   const fileName = `${session}.${version}.emscripten`;
