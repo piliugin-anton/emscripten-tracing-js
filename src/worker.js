@@ -66,22 +66,35 @@ class Tracing {
   _sendQueue() {
     if (this.queue.length === 0 || !this.session || !this.version) return;
 
-    /*this.client.post(
+    this.client.post(
       `/trace?session=${this.session}&version=${this.version}`,
       this._arrayJoin(this.queue, "\n")
     ).then((res) => console.log("Success", res))
-    .catch((error) => console.log(error));*/
-    fetch(
-      `${this.url}trace?session=${this.session}&version=${this.version}`,
-      {
-        method: "POST",
-        headers: {
-          "Emscripten-Tracing-JS": this.version,
-          "Content-Type": "text/emscripten-data",
-        },
-        body: this._arrayJoin(this.queue, "\n"),
-        mode: "*cors"
-      }
-    );
+    .catch((error) => console.log(error));
   }
 }
+
+const Tracer = new Tracing();
+
+self.addEventListener(
+  "message",
+  (e) => {
+    const message = e.data;
+    const cmd = message.cmd;
+    if (cmd === "post") {
+      Tracer.send(message.entry);
+    } else if (cmd === "configure") {
+      console.log("Configure me!");
+      //const url = message.url.replace(/^http/, "ws");
+      Tracer.configure(message.url, message.session_id, message.data_version);
+      /*Tracer.connect(
+        `${url}?version=${message.data_version}&session=${message.session_id}`
+      );*/
+    } else if (cmd === "close") {
+      console.log("WANT TO CLOSE");
+      //Tracer.disconnect();
+      Tracer.destroy();
+    }
+  },
+  false
+);
