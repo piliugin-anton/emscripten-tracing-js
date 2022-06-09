@@ -89,15 +89,8 @@ self.addEventListener(
     if (cmd === "post") {
       Tracer.send(message.entry);
     } else if (cmd === "configure") {
-      console.log("Configure me!");
-      //const url = message.url.replace(/^http/, "ws");
       Tracer.configure(message.url, message.session_id, message.data_version);
-      /*Tracer.connect(
-        `${url}?version=${message.data_version}&session=${message.session_id}`
-      );*/
     } else if (cmd === "close") {
-      console.log("WANT TO CLOSE");
-      //Tracer.disconnect();
       Tracer.destroy();
     }
   },
