@@ -68,8 +68,13 @@ class Tracing {
 
     this.client.post(
       `/trace/${this.version}/${this.session}`,
-      this._arrayJoin(this.queue, "\n")
-    ).then((res) => console.log("Success", res))
+      this._arrayJoin(this.queue, "\n"),
+      {
+        headers: {
+          "Emscripten-Data-Length": this.queue.length
+        }
+      }
+    ).then(({data}) => data.length && this.queue.splice(0, data.length))
     .catch((error) => console.log(error));
   }
 }

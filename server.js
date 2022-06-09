@@ -41,7 +41,7 @@ const static = StaticFiles({ root: path.join(__dirname, "www") });
 uquik.use(
   CORS({
     methods: ["GET", "HEAD", "POST"],
-    allowedHeaders: ["content-type", "emscripten-tracing-js"],
+    allowedHeaders: ["content-type", "emscripten-tracing-js", "emscripten-data-length"],
   })
 );
 
@@ -51,7 +51,7 @@ uquik.head("/worker.js", static);
 uquik.post(
   "/trace/:version/:session",
   { max_body_length: 33554432 },
-  (request, response) => response.json({ ok: true })
+  (request, response) => response.json({ length: Number(request.headers.get("emscripten-data-length")) })
 );
 uquik.use("/trace/", (request, response, next) => {
   const version = request.path_parameters.get("version");
