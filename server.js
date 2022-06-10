@@ -14,18 +14,17 @@ const getSessionFiles = (dir) => {
   return new Promise((resolve, reject) => {
     const emscriptenFiles = [];
     fs.readdir(dir, { withFileTypes: true }, (err, files) => {
+      if (err) console.log(err);
       if (err) reject(err);
       else {
-        const lastIndex = files.length - 1;
         files.forEach((file, index) => {
           if (file.isFile() && file.name.endsWith(".emscripten")) {
             const fileName = path.join(dir, file.name);
-
-            if (/([0-9]+_[0-9]+)\.([0-9]+)/.test(fileName)) emscriptenFiles.push(fileName);
-
-            if (index === lastIndex) resolve(emscriptenFiles);
+            if (/([0-9]+_[0-9]+)\.([0-9]+)/.test(fileName))
+              emscriptenFiles.push(fileName);
           }
         });
+        resolve(emscriptenFiles);
       }
     });
   });
@@ -103,16 +102,18 @@ uquik.get("/static/*", static);
 uquik.head("/static/*", static);
 
 uquik.get("/", (request, response) => {
-  console.log(response.sessions);
-  response.html(
-    Templates.render("index.eta", {
-      title: "Sessions",
-      pageTitle: "Sessions",
-      //sessions: []
-    })
-  );
+  console.log("/")
+  const data = {
+    title: "Sessions",
+    pageTitle: "Sessions",
+  };
+
+  if (response.sessions.length) data.sessions = response.sessions;
+
+  response.html(Templates.render("index.eta", data));
 });
 uquik.use("/", async (request, response, next) => {
+  console.log("middleware /")
   try {
     const sessionFiles = await getSessionFiles(dataDir);
     const sessionsLength = sessionFiles.length;
@@ -126,7 +127,6 @@ uquik.use("/", async (request, response, next) => {
       if (!match || match.length < 3) continue;
 
       const sessionID = match[1];
-      console.log("sessionID", sessionID);
       const session = new Sessions(sessionID);
 
       let data;
@@ -135,11 +135,10 @@ uquik.use("/", async (request, response, next) => {
       }
       sessions.push(session);
     }
-    console.log(sessions.length)
-    return (response.sessions = sessions);
+    response.sessions = sessions;
   } catch (ex) {
-    console.log(ex)
-    return next(ex);
+    console.log(ex);
+    return ex;
   }
 });
 

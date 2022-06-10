@@ -31,16 +31,15 @@ class Sessions {
   }
 
   next_frame_id() {
-    this.FRAME_ID = this.FRAME_ID + 1;
-    return this.FRAME_ID;
+    return (this.FRAME_ID = this.FRAME_ID + 1);
   }
 
   next_context_id() {
-    this.CONTEXT_ID = this.CONTEXT_ID + 1;
-    return this.CONTEXT_ID;
+    return (this.CONTEXT_ID = this.CONTEXT_ID + 1);
   }
 
   update(entry) {
+    console.log("entry", entry)
     // Some configuration options ...
     if (entry[0] === EVENTS.APPLICATION_NAME) {
       this.application = entry[1];
