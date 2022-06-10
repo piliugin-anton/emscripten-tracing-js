@@ -2,6 +2,9 @@ const HeapView = require("./HeapView");
 const MemoryLayoutView = require("./MemoryLayoutView");
 const SummaryView = require("./SummaryView");
 const LogMessageView = require("./LogMessageView");
+const ContextNode = require("./ContextNode");
+const SessionError = require("./SessionError");
+const SessionFrame = require("./SessionFrame");
 const EVENTS = require("./Events");
 
 class Sessions {
@@ -22,9 +25,19 @@ class Sessions {
       summary: new SummaryView(this.heapView),
       log_messages: new LogMessageView(),
     };
-    this.context = this;
+    this.context = new ContextNode(null, "Root", this);
     // Cached data
     this.peak_allocated = 0;
+  }
+
+  next_frame_id() {
+    this.FRAME_ID = this.FRAME_ID + 1;
+    return this.FRAME_ID;
+  }
+
+  next_context_id() {
+    this.CONTEXT_ID = this.CONTEXT_ID + 1;
+    return this.CONTEXT_ID;
   }
 
   update(entry) {
@@ -45,18 +58,18 @@ class Sessions {
 
     // Update context
     if (entry[0] === EVENTS.ENTER_CONTEXT) {
-      this.context = this.context.get_child(entry[2], self);
+      this.context = this.context.get_child(entry[2], this);
       this.context.enter(entry[1]);
     } else if (entry[0] === EVENTS.EXIT_CONTEXT) {
       this.context.exit(entry[1]);
       this.context = this.context.parent;
     } else {
-      this.context.push(entry, this.heapView);
+      this.context.update(entry, this.heapView);
     }
 
     // Record errors
     if (entry[0] === EVENTS.REPORT_ERROR) {
-      this.errors.push(SessionError(entry[1], entry[2], entry[3]));
+      this.errors.push(new SessionError(entry[1], entry[2], entry[3]));
       return;
     }
 
@@ -69,9 +82,9 @@ class Sessions {
       if (this.currentFrame !== null) {
         console.log("this.currentFrame is not null!");
         this.currentFrame.complete(entry[1]);
-        this.frames.append(this.currentFrame);
+        this.frames.push(this.currentFrame);
       }
-      this.currentFrame = SessionFrame(this.next_frame_id(), entry[1]);
+      this.currentFrame = new SessionFrame(this.next_frame_id(), entry[1]);
     } else if (this.currentFrame !== null) {
       this.currentFrame.update(entry, this.heapView);
     }

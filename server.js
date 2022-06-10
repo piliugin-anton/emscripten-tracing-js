@@ -2,7 +2,8 @@ const fs = require("fs");
 const path = require("path");
 const { Server, StaticFiles, CORS, CustomError } = require("uquik");
 const TemplateEngine = require("./server/TemplateEngine.js");
-const readline = require("readline");
+const FileReader = require("./tracing/FileReader");
+const Sessions = require("./tracing/Sessions");
 
 const port = 5000;
 const host = "127.0.0.1";
@@ -18,41 +19,14 @@ const getSessionFiles = (dir) => {
         const lastIndex = files.length - 1;
         files.forEach((file, index) => {
           if (file.isFile() && file.name.endsWith(".emscripten")) {
-            emscriptenFiles.push(path.join(dir, file.name));
+            const fileName = path.join(dir, file.name);
+
+            if (/([0-9]+_[0-9]+)\.([0-9]+)/.test(fileName)) emscriptenFiles.push(fileName);
+
             if (index === lastIndex) resolve(emscriptenFiles);
           }
         });
       }
-    });
-  });
-};
-
-const getSessionInfo = (file) => {
-  return new Promise((resolve, reject) => {
-    const fileStream = fs.createReadStream(file);
-    fileStream.once('error', (error) => reject(error))
-
-    const rl = readline.createInterface({
-      input: fileStream,
-      crlfDelay: Infinity,
-    });
-    // Note: we use the crlfDelay option to recognize all instances of CR LF
-    // ('\r\n') in input.txt as a single line break.
-    let applicationName,
-      counter = 0;
-    rl.on("line", (line) => {
-      if (counter === 0) applicationName = line.split(",")[1];
-      if (counter === 1) {
-        rl.close();
-
-        fileStream.destroy();
-
-        resolve({
-          applicationName,
-          sessionName: line.split(",")[1],
-        });
-      }
-      counter++;
     });
   });
 };
@@ -144,11 +118,27 @@ uquik.use("/", async (request, response, next) => {
     const sessionsLength = sessionFiles.length;
     const sessions = [];
     for (let i = 0; i < sessionsLength; i++) {
-      sessions.push(await getSessionInfo(sessionFiles[i]));
+      const file = sessionFiles[i];
+      const fileReader = new FileReader(file);
+      const fileName = path.basename(file, path.extname(file));
+
+      const match = fileName.match(/([0-9]+_[0-9]+)\.([0-9]+)/);
+      if (!match || match.length < 3) continue;
+
+      const sessionID = match[1];
+      console.log("sessionID", sessionID);
+      const session = new Sessions(sessionID);
+
+      let data;
+      while ((data = fileReader.next)) {
+        session.update(data);
+      }
+      sessions.push(session);
     }
-    response.sessions = sessions;
-    return;
+    console.log(sessions.length)
+    return (response.sessions = sessions);
   } catch (ex) {
+    console.log(ex)
     return next(ex);
   }
 });
