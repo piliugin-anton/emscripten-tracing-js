@@ -39,7 +39,6 @@ class Sessions {
   }
 
   update(entry) {
-    console.log("entry", entry)
     // Some configuration options ...
     if (entry[0] === EVENTS.APPLICATION_NAME) {
       this.application = entry[1];

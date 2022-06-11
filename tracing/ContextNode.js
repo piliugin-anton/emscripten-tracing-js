@@ -21,11 +21,8 @@ class ContextNode {
 
   get_child(name, session) {
     const childrenLength = this.children.length;
-    if (childrenLength) {
-      for (let i = 0; i < childrenLength; i++) {
-        if (this.children[i].name === name) return child;
-      }
-    }
+    if (childrenLength) for (let i = 0; i < childrenLength; i++) if (this.children[i].name === name) return this.children[i];
+
     return new ContextNode(this, name, session);
   }
 

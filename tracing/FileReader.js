@@ -7,10 +7,10 @@ class FileReader {
   }
 
   parseLine(string) {
-    const match = string.match(/(.+),(.+)/);
-    if (match && match.length < 3) return null;
+    const entries = string.split(",");
+    if (!entries || entries.length < 2) return null;
 
-    return [match[1], match[2]];
+    return entries;
   }
 
   close() {

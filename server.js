@@ -124,8 +124,7 @@ uquik.use("/", async (request, response, next) => {
       const match = fileName.match(/([0-9]+_[0-9]+)\.([0-9]+)/);
       if (!match || match.length < 3) continue;
 
-      const sessionID = match[1];
-      const session = new Sessions(sessionID);
+      const session = new Sessions(match[1]);
 
       let data;
       while ((data = fileReader.next)) {
