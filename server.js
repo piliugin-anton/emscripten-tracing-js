@@ -91,10 +91,10 @@ uquik.use("/trace/", (request, response, next) => {
   const writeStream = fs.createWriteStream(path.join(dataDir, fileName), {
     flags: "a",
   });
-  writeStream.once('error', (err) => response.throw(err));
+  writeStream.once("error", (err) => response.throw(err));
 
   request.once("end", () => {
-    writeStream.write("\r\n")
+    writeStream.write("\r\n");
     if (!writeStream.destroyed) writeStream.destroy();
     next();
   });
@@ -105,12 +105,12 @@ uquik.get("/static/*", static);
 uquik.head("/static/*", static);
 
 uquik.get("/", (request, response) => {
+  console.log(response.locals.sessions[0]);
   const data = {
     title: "Sessions",
     pageTitle: "Sessions",
+    sessions: response.locals.sessions,
   };
-
-  if (response.locals.sessions.length) data.sessions = response.locals.sessions;
 
   response.html(Templates.render("index.eta", data));
 });
