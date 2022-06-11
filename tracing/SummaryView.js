@@ -14,10 +14,10 @@ class SummaryView {
   update(entry) {
     if (entry[0] === EVENTS.ALLOCATE) {
       const size = Number(entry[3]);
-      this.total_allocated = this.total_allocated + size;
-      this.total_allocations = this.total_allocations + 1;
-      this.current_allocated = this.current_allocated + size;
-      this.current_allocations = this.current_allocations + 1;
+      this.total_allocated += size;
+      this.total_allocations += 1;
+      this.current_allocated += size;
+      this.current_allocations += 1;
       this.peak_allocated = Math.max(
         this.peak_allocated,
         this.current_allocated

@@ -133,6 +133,7 @@ uquik.use("/", async (request, response, next) => {
       while ((data = fileReader.next)) {
         session.update(data);
       }
+      session.update_cached_data();
       sessions.push(session);
     }
     response.locals.sessions = sessions;

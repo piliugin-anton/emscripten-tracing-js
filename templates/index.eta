@@ -12,7 +12,7 @@
 
     <% it.sessions.forEach((session) => { %>
       <tr>
-        <td><a href="/session/<%= session.sessionID %>/"><%= session.name %></a></td>
+        <td><a href="/session/<%= session.session_id %>/"><%= session.name %></a></td>
         <td><%= session.application %></td>
         <td><%= session.username %></td>
         <td data-order="<%= session.peak_allocated %>"><%= session.peak_allocated_formatted %></td>
