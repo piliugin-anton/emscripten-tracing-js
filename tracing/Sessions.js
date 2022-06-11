@@ -15,7 +15,7 @@ class Sessions {
     this.name = session_id;
     this.application = "unknown";
     this.username = "unknown";
-    this.currentFrame = null;
+    this.current_frame = null;
     this.frames = [];
     this.entries = [];
     this.errors = [];
@@ -31,60 +31,52 @@ class Sessions {
   }
 
   next_frame_id() {
-    return (this.FRAME_ID = this.FRAME_ID + 1);
+    return (this.frame_id = this.frame_id + 1);
   }
 
   next_context_id() {
-    return (this.CONTEXT_ID = this.CONTEXT_ID + 1);
+    return (this.context_id = this.context_id + 1);
   }
 
   update(entry) {
     // Some configuration options ...
-    if (entry[0] === EVENTS.APPLICATION_NAME) {
-      this.application = entry[1];
-      return;
-    }
+    if (entry[0] === EVENTS.APPLICATION_NAME) return (this.application = entry[1]);
 
-    if (entry[0] === EVENTS.SESSION_NAME) {
-      this.name = entry[1];
-    }
-    if (entry[0] === EVENTS.USER_NAME) {
-      this.username = entry[1];
-      return;
-    }
+    if (entry[0] === EVENTS.SESSION_NAME) this.name = entry[1];
+
+    if (entry[0] === EVENTS.USER_NAME) return (this.username = entry[1]);
+
     this.entries.push(entry);
 
     // Update context
     if (entry[0] === EVENTS.ENTER_CONTEXT) {
+      if (!this.context) console.log(this)
       this.context = this.context.get_child(entry[2], this);
-      this.context.enter(entry[1]);
+      this.context.enter(Number(entry[1]));
     } else if (entry[0] === EVENTS.EXIT_CONTEXT) {
-      this.context.exit(entry[1]);
+      this.context.exit(Number(entry[1]));
       this.context = this.context.parent;
     } else {
       this.context.update(entry, this.heapView);
     }
 
     // Record errors
-    if (entry[0] === EVENTS.REPORT_ERROR) {
-      this.errors.push(new SessionError(entry[1], entry[2], entry[3]));
-      return;
-    }
+    if (entry[0] === EVENTS.REPORT_ERROR) return this.errors.push(new SessionError(Number(entry[1]), entry[2], entry[3]));
 
     // Update per-frame data
     if (entry[0] === EVENTS.FRAME_END) {
-      this.currentFrame.complete(entry[1]);
-      this.frames.push(this.currentFrame);
-      this.currentFrame = null;
+      this.current_frame.complete(Number(entry[1]));
+      this.frames.push(this.current_frame);
+      this.current_frame = null;
     } else if (entry[0] === EVENTS.FRAME_START) {
-      if (this.currentFrame !== null) {
-        console.log("this.currentFrame is not null!");
-        this.currentFrame.complete(entry[1]);
-        this.frames.push(this.currentFrame);
+      if (this.current_frame !== null) {
+        console.log("this.current_frame is not null!");
+        this.current_frame.complete(Number(entry[1]));
+        this.frames.push(this.current_frame);
       }
-      this.currentFrame = new SessionFrame(this.next_frame_id(), entry[1]);
-    } else if (this.currentFrame !== null) {
-      this.currentFrame.update(entry, this.heapView);
+      this.current_frame = new SessionFrame(this.next_frame_id(), Number(entry[1]));
+    } else if (this.current_frame !== null) {
+      this.current_frame.update(entry, this.heapView);
     }
 
     /* Update views
@@ -104,9 +96,8 @@ class Sessions {
   }
 
   get_view(viewName) {
-    if (viewName === "heap") {
-      return this.heapView;
-    }
+    if (viewName === "heap") return this.heapView;
+
     return this.views[viewName];
   }
 

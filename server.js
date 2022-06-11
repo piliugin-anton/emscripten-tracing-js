@@ -88,9 +88,12 @@ uquik.use("/trace/", (request, response, next) => {
   const version = request.path_parameters.get("version");
   const session = request.path_parameters.get("session");
   const fileName = `${session}.${version}.emscripten`;
+  const fileExists = fs.existsSync(fileName);
   const writeStream = fs.createWriteStream(path.join(dataDir, fileName), {
     flags: "a",
   });
+  if (fileExists) writeStream.once('open', () => writeStream.write("\n"));
+
   request.once("end", () => {
     if (!writeStream.destroyed) writeStream.destroy();
     next();

@@ -21,7 +21,11 @@ class ContextNode {
 
   get_child(name, session) {
     const childrenLength = this.children.length;
-    if (childrenLength) for (let i = 0; i < childrenLength; i++) if (this.children[i].name === name) return this.children[i];
+    if (childrenLength) {
+      for (let i = 0; i < childrenLength; i++) {
+        if (this.children[i].name === name) return this.children[i];
+      }
+    }
 
     return new ContextNode(this, name, session);
   }
@@ -38,12 +42,12 @@ class ContextNode {
 
   update(entry, heapView) {
     if (entry[0] === EVENTS.ALLOCATE) {
-      const size = entry[3];
+      const size = Number(entry[3]);
       this.alloc_count = this.alloc_count + 1;
       this.alloc_bytes = this.alloc_bytes + size;
     } else if (entry[0] === EVENTS.REALLOCATE) {
       const oldSize = heapView.size_for_address(entry[2]);
-      const newSize = entry[4];
+      const newSize = Number(entry[4]);
       const changedSize = newSize - oldSize;
       if (changedSize > 0) {
         this.alloc_bytes = this.alloc_bytes + changedSize;
@@ -77,7 +81,7 @@ class ContextNode {
       id: this.id,
       indent: indent,
       parent_id: (this.parent && this.parent.id) || 0,
-      has_children: len(this.children) > 0,
+      has_children: this.children.length > 0,
       name: this.name,
       times_entered: this.times_entered,
       this_time_elapsed: this.this_time_elapsed,
