@@ -14,7 +14,6 @@ const getSessionFiles = (dir) => {
   return new Promise((resolve, reject) => {
     const emscriptenFiles = [];
     fs.readdir(dir, { withFileTypes: true }, (err, files) => {
-      if (err) console.log(err);
       if (err) reject(err);
       else {
         files.forEach((file, index) => {
@@ -105,7 +104,6 @@ uquik.get("/static/*", static);
 uquik.head("/static/*", static);
 
 uquik.get("/", (request, response) => {
-  console.log(response.locals.sessions[0]);
   const data = {
     title: "Sessions",
     pageTitle: "Sessions",

@@ -17,9 +17,9 @@
         <td><%= session.username %></td>
         <td data-order="<%= session.peak_allocated %>"><%= session.peak_allocated_formatted %></td>
           <% if (session.errors.length > 0) { %>
-            <td class="danger"><%= session.errors.length %></td>
+            <td class="bg-danger"><%= session.errors.length %></td>
           <% } else { %>
-            <td class="success" data-order="0">None</td>
+            <td class="bg-success" data-order="0">None</td>
           <% } %>
       </tr>
     <% }); %>
