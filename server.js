@@ -126,6 +126,7 @@ uquik.use("/", async (request, response, next) => {
       if (!match || match.length < 3) continue;
 
       const session = new Sessions(match[1]);
+      session.data_version = Number(match[2]);
 
       let data;
       while ((data = fileReader.next)) {

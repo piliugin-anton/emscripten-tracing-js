@@ -142,6 +142,22 @@ class Sessions {
   get peak_allocated_formatted() {
     return this.formatBytes(this.peak_allocated);
   }
+
+  get name_formatted() {
+    const months = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+    const date = new Date(this.name);
+    const year = date.getFullYear();
+    const month = months[date.getMonth()];
+    const day = date.getDate();
+    const hours = date.getHours();
+    const minutes = date.getMinutes();
+    const seconds = date.getSeconds();
+    return `${day} ${month} ${year} ${hours}:${minutes}:${seconds}`;
+  }
+
+  get fileName() {
+    return `${this.session_id}.${this.data_version}`;
+  }
 }
 
 module.exports = Sessions;
