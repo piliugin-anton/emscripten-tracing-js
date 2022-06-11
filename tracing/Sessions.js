@@ -40,7 +40,8 @@ class Sessions {
 
   update(entry) {
     // Some configuration options ...
-    if (entry[0] === EVENTS.APPLICATION_NAME) return (this.application = entry[1]);
+    if (entry[0] === EVENTS.APPLICATION_NAME)
+      return (this.application = entry[1]);
 
     if (entry[0] === EVENTS.SESSION_NAME) this.name = entry[1];
 
@@ -50,7 +51,6 @@ class Sessions {
 
     // Update context
     if (entry[0] === EVENTS.ENTER_CONTEXT) {
-      if (!this.context) console.log(this)
       this.context = this.context.get_child(entry[2], this);
       this.context.enter(Number(entry[1]));
     } else if (entry[0] === EVENTS.EXIT_CONTEXT) {
@@ -61,7 +61,10 @@ class Sessions {
     }
 
     // Record errors
-    if (entry[0] === EVENTS.REPORT_ERROR) return this.errors.push(new SessionError(Number(entry[1]), entry[2], entry[3]));
+    if (entry[0] === EVENTS.REPORT_ERROR)
+      return this.errors.push(
+        new SessionError(Number(entry[1]), entry[2], entry[3])
+      );
 
     // Update per-frame data
     if (entry[0] === EVENTS.FRAME_END) {
@@ -74,7 +77,10 @@ class Sessions {
         this.current_frame.complete(Number(entry[1]));
         this.frames.push(this.current_frame);
       }
-      this.current_frame = new SessionFrame(this.next_frame_id(), Number(entry[1]));
+      this.current_frame = new SessionFrame(
+        this.next_frame_id(),
+        Number(entry[1])
+      );
     } else if (this.current_frame !== null) {
       this.current_frame.update(entry, this.heapView);
     }
@@ -119,6 +125,22 @@ class Sessions {
         this.add_context_data(contexts, children[i], indent + 1);
       }
     }
+  }
+
+  formatBytes(bytes, decimals = 2) {
+    if (bytes === 0) return "0 Bytes";
+
+    const k = 1024;
+    const dm = decimals < 0 ? 0 : decimals;
+    const sizes = ["Bytes", "KB", "MB", "GB", "TB", "PB", "EB", "ZB", "YB"];
+
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + " " + sizes[i];
+  }
+
+  get peak_allocated_formatted() {
+    return this.formatBytes(this.peak_allocated);
   }
 }
 
