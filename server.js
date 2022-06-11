@@ -102,18 +102,16 @@ uquik.get("/static/*", static);
 uquik.head("/static/*", static);
 
 uquik.get("/", (request, response) => {
-  console.log("/")
   const data = {
     title: "Sessions",
     pageTitle: "Sessions",
   };
 
-  if (response.sessions.length) data.sessions = response.sessions;
+  if (response.locals.sessions.length) data.sessions = response.locals.sessions;
 
   response.html(Templates.render("index.eta", data));
 });
 uquik.use("/", async (request, response, next) => {
-  console.log("middleware /")
   try {
     const sessionFiles = await getSessionFiles(dataDir);
     const sessionsLength = sessionFiles.length;
@@ -135,7 +133,7 @@ uquik.use("/", async (request, response, next) => {
       }
       sessions.push(session);
     }
-    response.sessions = sessions;
+    response.locals.sessions = sessions;
   } catch (ex) {
     console.log(ex);
     return ex;
