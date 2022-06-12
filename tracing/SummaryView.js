@@ -1,4 +1,5 @@
 const EVENTS = require("./Events");
+const { formatBytes } = require("./utils");
 
 class SummaryView {
   constructor(heap_view) {
@@ -40,6 +41,18 @@ class SummaryView {
       this.current_allocated = this.current_allocated - size;
       this.current_allocations = this.current_allocations - 1;
     }
+  }
+
+  get current_allocated_formatted() {
+    return formatBytes(this.current_allocated);
+  }
+
+  get peak_allocated_formatted() {
+    return formatBytes(this.peak_allocated);
+  }
+
+  get total_allocated_formatted() {
+    return formatBytes(this.total_allocated);
   }
 }
 

@@ -6,6 +6,7 @@ const ContextNode = require("./ContextNode");
 const SessionError = require("./SessionError");
 const SessionFrame = require("./SessionFrame");
 const EVENTS = require("./Events");
+const { formatBytes } = require("./utils");
 
 class Sessions {
   constructor(session_id) {
@@ -87,7 +88,7 @@ class Sessions {
 
     /* Update views
       We have to update the heap before the others as they
-      may query it. Unless it is a 'fr' event, in which case
+      may query it. Unless it is a 'free' event, in which case
       we need to do it after we update the other views. */
     if (entry[0] !== EVENTS.FREE) {
       this.heapView.update(entry, this);
@@ -101,14 +102,8 @@ class Sessions {
     }
   }
 
-  get_view(viewName) {
-    if (viewName === "heap") return this.heapView;
-
-    return this.views[viewName];
-  }
-
   update_cached_data() {
-    this.peak_allocated = this.get_view("summary").peak_allocated;
+    this.peak_allocated = this.views.summary.peak_allocated;
   }
 
   get_flattened_context_data() {
@@ -127,20 +122,8 @@ class Sessions {
     }
   }
 
-  formatBytes(bytes, decimals = 2) {
-    if (bytes === 0) return "0 Bytes";
-
-    const k = 1024;
-    const dm = decimals < 0 ? 0 : decimals;
-    const sizes = ["Bytes", "KB", "MB", "GB", "TB", "PB", "EB", "ZB", "YB"];
-
-    const i = Math.floor(Math.log(bytes) / Math.log(k));
-
-    return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + " " + sizes[i];
-  }
-
   get peak_allocated_formatted() {
-    return this.formatBytes(this.peak_allocated);
+    return formatBytes(this.peak_allocated);
   }
 
   get name_formatted() {

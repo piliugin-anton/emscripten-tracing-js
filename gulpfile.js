@@ -15,7 +15,6 @@ let res = require("./templates/resources");
 const resources = res.map((r) => path.join("www", r));
 
 const workerFilePath = path.join(__dirname, "src", "worker.js");
-const templatesGlob = path.join(__dirname, "templates", "**/*");
 const tracingGlob = path.join(__dirname, "tracing", "**/*");
 const webDir = path.join(__dirname, "www")
 const staticDir = path.join(webDir, "static");
@@ -102,7 +101,7 @@ gulp.task("templates", () => {
 });
 
 if (process.env.NODE_ENV === "development") {
-  gulp.watch([templatesGlob, style], gulp.series("templates"));
+  gulp.watch([style], gulp.series("templates"));
 }
 
 gulp.task("server", (done) => {
@@ -111,8 +110,8 @@ gulp.task("server", (done) => {
     env: {
       NODE_ENV: "development",
     },
-    ext: "js json pug",
-    watch: [path.join(__dirname, "server.js"), path.join(__dirname, "server", "**/*"), templatesGlob, tracingGlob],
+    ext: "js json",
+    watch: [path.join(__dirname, "server.js"), path.join(__dirname, "server", "**/*"), tracingGlob],
     delay: 2500,
     done: done,
   });

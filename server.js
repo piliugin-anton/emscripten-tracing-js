@@ -133,13 +133,18 @@ uquik.get("/session/:fileName", async (request, response) => {
     activePage: "index"
   };
 
-  response.html(pug.renderFile(path.join(templatesDir, "session", "index.pug"), data));
+  try {
+    const rendered = pug.renderFile(path.join(templatesDir, "session", "index.pug"), data);
+    response.html(rendered);
+  } catch(ex) {
+    console.log(ex)
+  }
 });
 uquik.use("/session/", (request, response, next) => {
   const fileName = `${request.path_parameters.get("fileName")}.emscripten`;
   const sessionReader = new SessionReader(path.join(dataDir, fileName));
   sessionReader.read();
-  console.log(sessionReader.session)
+
   if (!sessionReader.session) return next(new CustomError("Cannot load session", 404));
 
   response.locals.session = sessionReader.session;

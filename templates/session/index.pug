@@ -4,10 +4,54 @@ block body
     .col-md-6
       h2.sub-header Allocation Summary
       #table-allocation-summary
-    .col-md-6
-      h2.sub-header Memory Usage
-      #chart-memory-usage
-      #table-memory-usage
+        table.table
+          thead.thead-dark
+            tr
+              th(scope='col')
+              th(scope='col') Size
+              th(scope='col') # of operations
+          tbody
+            tr
+              th(scope='row') Current
+              td= session.views.summary.current_allocated_formatted
+              td= session.views.summary.current_allocations.toLocaleString()
+            tr
+              th(scope='row') Peak
+              td= session.views.summary.peak_allocated_formatted
+              td= session.views.summary.peak_allocations.toLocaleString()
+            tr
+              th(scope='row') Total
+              td= session.views.summary.total_allocated_formatted
+              td= session.views.summary.total_allocations.toLocaleString()
+    if session.views.memory_layout.current
+      .col-md-6
+        h2.sub-header Memory Usage
+        #chart-memory-usage
+        #table-memory-usage
+          table.table
+            thead.thead-dark
+              tr
+                th(scop='col') Type
+                th(scope='col') Size
+            tbody
+              tr
+                th(scope='row') Static
+                td= session.views.memory_layout.static
+              tr
+                th(scope='row') Stack
+                td= session.views.memory_layout.stack
+              tr
+                th(scope='row') Available Stack
+                td= session.views.memory_layout.available_stack
+              tr
+                th(scope='row') Dynamic
+                td= session.views.memory_layout.dynamic
+              tr
+                th(scope='row') Available Dynamic
+                td= session.views.memory_layout.available_dynamic
+              tr
+                th(scope='row') Total
+                td= session.views.memory_layout.total
   .row
     h2.sub-header Memory Usage History
     #chart-memory-usage-history

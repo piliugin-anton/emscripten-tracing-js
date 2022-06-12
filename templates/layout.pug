@@ -19,6 +19,6 @@ html(lang='en')
         .col-sm-3.col-md-2.sidebar
           block navbar
         .col-sm-9.col-sm-offset-3.col-md-10.col-md-offset-2.main
-          h1#page-header.page-header #{pageTitle}
-            span.small.text-muted.pull-right #{pageSubTitle}
+          h1#page-header.page-header.pb-4= pageTitle
+            span.small.text-muted.pull-right= pageSubTitle
           block body
