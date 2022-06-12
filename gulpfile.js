@@ -11,8 +11,6 @@ const nodemon = require("./helpers/gulp-nodemon");
 const stripJS = require("gulp-strip-comments");
 const cleanCSS = require("gulp-clean-css");
 const path = require("path");
-const res = require("./templates/resources");
-const resources = res.map((r) => path.join("www", r));
 
 const workerFilePath = path.join(__dirname, "src", "worker.js");
 const tracingGlob = path.join(__dirname, "tracing", "**/*");
@@ -20,6 +18,10 @@ const webDir = path.join(__dirname, "www")
 const staticDir = path.join(webDir, "static");
 const style = path.join(staticDir, "style.css");
 const resourcesFile = path.join(__dirname, "templates", "resources.json");
+
+const getResources = () => {
+  return require("./templates/resources").map((r) => path.join(__dirname, "www", r));
+}
 
 gulp.task("worker.js", () => {
   const browserified = browserify({
@@ -58,9 +60,9 @@ if (process.env.NODE_ENV === "development") {
   gulp.watch(workerFilePath, gulp.series("worker.js"));
 }
 
-gulp.task("templates", () => {
+gulp.task("resources", () => {
   return gulp
-    .src(resources)
+    .src(getResources())
     .pipe(gif("**/*.js", concat("bundle.min.js")))
     .pipe(gif("**/*.css", concat("bundle.min.css")))
     .pipe(
@@ -102,7 +104,7 @@ gulp.task("templates", () => {
 });
 
 if (process.env.NODE_ENV === "development") {
-  gulp.watch([style, resourcesFile], gulp.series("templates"));
+  gulp.watch([style, resourcesFile], gulp.series("resources"));
 }
 
 gulp.task("server", (done) => {
@@ -127,7 +129,7 @@ gulp.task("server", (done) => {
     });
 });
 
-const defaultTasks = ["worker.js", "templates"];
+const defaultTasks = ["worker.js", "resources"];
 
 if (process.env.NODE_ENV === "development") {
   defaultTasks.push("server");
