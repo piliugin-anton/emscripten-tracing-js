@@ -15,8 +15,8 @@
   "author": "Anton Piliugin",
   "license": "ISC",
   "dependencies": {
-    "eta": "^1.12.3",
     "n-readlines": "^1.0.1",
+    "pug": "^3.0.2",
     "uquik": "^1.0.19"
   },
   "devDependencies": {

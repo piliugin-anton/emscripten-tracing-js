@@ -1,0 +1,17 @@
+<% layout('../layout.eta', {
+title: it.title,
+pagetitle: it.pageTitle,
+pagesubtitle: `${it.session.name} &mdash; ${it.session.application} &mdash; ${it.session.username}`,
+navbar: [
+  { link: '/', text: 'Overview' },
+  { link: '/heap/type/', text: 'Heap Objects by Type' },
+  { link: '/heap/size/', text: 'Heap Objects by Size' },
+  { link: '/heap/events/', text: 'Heap Events' },
+  { link: '/heap/fragmentation/', text: 'Heap Fragmentation' },
+  { link: '/execution/', text: 'Execution Contexts' },
+  { link: '/log_messages/', text: 'Log Messages' },
+  { link: '/frames/', text: 'Frames' },
+  { link: '/errors/', text: 'Errors' }
+],
+active_page: it.active_page || '/'
+}) %>

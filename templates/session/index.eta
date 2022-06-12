@@ -1,25 +1,7 @@
-{% extends "session/layout.html" %}
-{% set active_page = "index" %}
-{% block pagetitle %}Overview{% endblock %}
-{% block body %}
-<div class="row">
-  <div class="col-md-6">
-    <h2 class="sub-header">Allocation Summary</h2>
-    <div id="table-allocation-summary"></div>
-  </div>
-  <div class="col-md-6">
-    <h2 class="sub-header">Memory Usage</h2>
-    <div id="chart-memory-usage"></div>
-    <div id="table-memory-usage"></div>
-  </div>
-</div>
-<div class="row">
-  <h2 class="sub-header">Memory Usage History</h2>
-  <div id="chart-memory-usage-history"></div>
-</div>
-{% endblock %}
-{% block extrahead %}
-<script type="text/javascript">
+<% layout('./layout.eta', {
+title: it.title,
+pagetitle: it.pageTitle,
+extrahead: `<script type="text/javascript">
   google.load('visualization', '1', {packages:['corechart', 'table']});
   google.setOnLoadCallback(drawCharts);
   function drawCharts() {
@@ -60,7 +42,7 @@
     var currentMemoryLayoutData = new google.visualization.DataTable();
     currentMemoryLayoutData.addColumn('string', 'Type');
     currentMemoryLayoutData.addColumn('number', 'Bytes');
-    {% if memory_layout.current %}
+    <% if (it.memory_layout.current) { %>
     currentMemoryLayoutData.addRows([
       ['Static', {
         v: {{ memory_layout.current.static_top - memory_layout.current.static_base }},
@@ -87,7 +69,7 @@
         f: '{{ memory_layout.current.total_memory|filesizeformat(True) }}'
       }]
     ]);
-    {% endif %}
+    <% } %>
 
     var tableOptions = {
       sort: 'disable'
@@ -129,5 +111,22 @@
     var mhchart = new google.visualization.AreaChart(document.getElementById('chart-memory-usage-history'));
     mhchart.draw(mhdata, mhchartOptions);
   }
-</script>
-{% endblock %}
+</script>`,
+active_page: '/',
+session: it.session
+}) %>
+<div class="row">
+  <div class="col-md-6">
+    <h2 class="sub-header">Allocation Summary</h2>
+    <div id="table-allocation-summary"></div>
+  </div>
+  <div class="col-md-6">
+    <h2 class="sub-header">Memory Usage</h2>
+    <div id="chart-memory-usage"></div>
+    <div id="table-memory-usage"></div>
+  </div>
+</div>
+<div class="row">
+  <h2 class="sub-header">Memory Usage History</h2>
+  <div id="chart-memory-usage-history"></div>
+</div>

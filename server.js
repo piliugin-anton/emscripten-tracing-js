@@ -1,14 +1,14 @@
 const fs = require("fs");
 const path = require("path");
 const { Server, StaticFiles, CORS, CustomError } = require("uquik");
-const TemplateEngine = require("./server/TemplateEngine.js");
-const FileReader = require("./tracing/FileReader");
-const Sessions = require("./tracing/Sessions");
+const pug = require('pug');
+const SessionReader = require("./tracing/SessionReader");
 
 const port = 5000;
 const host = "127.0.0.1";
 
 const dataDir = path.join(__dirname, "data");
+const templatesDir = path.join(__dirname, "templates");
 
 const getSessionFiles = (dir) => {
   return new Promise((resolve, reject) => {
@@ -45,10 +45,6 @@ const cleanup = (dir) => {
 };
 
 process.on("SIGINT", () => cleanup(dataDir));
-
-const Templates = new TemplateEngine({
-  rootDir: __dirname,
-});
 
 const uquik = new Server({
   json_errors: true,
@@ -103,14 +99,14 @@ uquik.use("/trace/", (request, response, next) => {
 uquik.get("/static/*", static);
 uquik.head("/static/*", static);
 
-uquik.get("/", (request, response) => {
+uquik.get("/", async (request, response) => {
   const data = {
     title: "Sessions",
     pageTitle: "Sessions",
     sessions: response.locals.sessions,
   };
 
-  response.html(Templates.render("index.eta", data));
+  response.html(pug.renderFile(path.join(templatesDir, "index.pug"), data));
 });
 uquik.use("/", async (request, response, next) => {
   try {
@@ -118,22 +114,9 @@ uquik.use("/", async (request, response, next) => {
     const sessionsLength = sessionFiles.length;
     const sessions = [];
     for (let i = 0; i < sessionsLength; i++) {
-      const file = sessionFiles[i];
-      const fileReader = new FileReader(file);
-      const fileName = path.basename(file, path.extname(file));
-
-      const match = fileName.match(/([0-9]+_[0-9]+)\.([0-9]+)/);
-      if (!match || match.length < 3) continue;
-
-      const session = new Sessions(match[1]);
-      session.data_version = Number(match[2]);
-
-      let data;
-      while ((data = fileReader.next)) {
-        session.update(data);
-      }
-      session.update_cached_data();
-      sessions.push(session);
+      const sessionReader = new SessionReader(sessionFiles[i]);
+      sessionReader.read();
+      if (sessionReader.session) sessions.push(sessionReader.session);
     }
     response.locals.sessions = sessions;
   } catch (ex) {
@@ -141,6 +124,26 @@ uquik.use("/", async (request, response, next) => {
     return ex;
   }
 });
+
+uquik.get("/session/:fileName", async (request, response) => {
+  const data = {
+    title: "Overview",
+    pageTitle: "Overview",
+    session: response.locals.session,
+  };
+
+  response.html(pug.renderFile(path.join(templatesDir, "session", "index.pug"), data));
+});
+uquik.use("/session/", (request, response, next) => {
+  const fileName = `${request.path_parameters.get("fileName")}.emscripten`;
+  const sessionReader = new SessionReader(path.join(dataDir, fileName));
+  sessionReader.read();
+
+  if (!sessionReader.session) return next(new CustomError("Cannot load session", 404));
+
+  response.locals.session = sessionReader.session;
+  next();
+})
 
 uquik
   .listen(port, host)

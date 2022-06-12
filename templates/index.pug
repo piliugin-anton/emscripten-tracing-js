@@ -1,0 +1,27 @@
+extends layout.pug
+block body
+  table#sessions.table.table-striped.table-hover
+    thead
+      tr
+        th Session ID
+        th Date and time
+        th Application
+        th Username
+        th Peak Allocated
+        th Errors?
+    tbody
+      each session in sessions
+        tr
+          td
+            a(href='/session/#{session.fileName}')= session.name
+          td= session.name_formatted
+          td= session.application
+          td= session.username
+          td(data-order='#{session.peak_allocated}')= session.peak_allocated_formatted
+          if session.errors.length
+            td.table-danger= session.errors.length
+          else
+            td.table-success(data-order='0') None
+      else
+        tr
+          td(colspan='6') No sessions
