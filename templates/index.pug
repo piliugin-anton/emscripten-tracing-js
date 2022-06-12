@@ -13,11 +13,11 @@ block body
       each session in sessions
         tr
           td
-            a(href='/session/#{session.fileName}')= session.name
+            a(href='/session/' + session.fileName)= session.name
           td= session.name_formatted
           td= session.application
           td= session.username
-          td(data-order='#{session.peak_allocated}')= session.peak_allocated_formatted
+          td(data-order=session.peak_allocated)= session.peak_allocated_formatted
           if session.errors.length
             td.table-danger= session.errors.length
           else
