@@ -18,6 +18,7 @@ const webDir = path.join(__dirname, "www")
 const staticDir = path.join(webDir, "static");
 const style = path.join(staticDir, "style.css");
 const resourcesFile = path.join(__dirname, "templates", "resources.json");
+const server = path.join(__dirname, "server.js");
 
 const getResources = () => {
   return require("./templates/resources").map((r) => path.join(__dirname, "www", r));
@@ -114,7 +115,7 @@ gulp.task("server", (done) => {
       NODE_ENV: "development",
     },
     ext: "js json",
-    watch: [path.join(__dirname, "server.js"), path.join(__dirname, "server", "**/*"), tracingGlob],
+    watch: [server, tracingGlob],
     delay: 2500,
     done: done,
   });
