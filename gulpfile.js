@@ -19,6 +19,7 @@ const tracingGlob = path.join(__dirname, "tracing", "**/*");
 const webDir = path.join(__dirname, "www")
 const staticDir = path.join(webDir, "static");
 const style = path.join(staticDir, "style.css");
+const resourcesFile = path.join(__dirname, "templates", "resources.json");
 
 gulp.task("worker.js", () => {
   const browserified = browserify({
@@ -101,7 +102,7 @@ gulp.task("templates", () => {
 });
 
 if (process.env.NODE_ENV === "development") {
-  gulp.watch([style], gulp.series("templates"));
+  gulp.watch([style, resourcesFile], gulp.series("templates"));
 }
 
 gulp.task("server", (done) => {

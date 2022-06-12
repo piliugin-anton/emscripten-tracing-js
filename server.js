@@ -107,7 +107,6 @@ uquik.get("/", async (request, response) => {
   };
 
   try {
-    console.log(data)
     const rendered = pug.renderFile(path.join(templatesDir, "index.pug"), data);
     response.html(rendered);
   } catch (ex) {
@@ -126,7 +125,6 @@ uquik.use("/", async (request, response, next) => {
     }
     response.locals.sessions = sessions;
   } catch (ex) {
-    console.log(ex);
     return ex;
   }
 });
@@ -143,7 +141,7 @@ uquik.get("/session/:fileName", async (request, response) => {
     const rendered = pug.renderFile(path.join(templatesDir, "session", "index.pug"), data);
     response.html(rendered);
   } catch(ex) {
-    console.log(ex)
+    response.throw(ex);
   }
 });
 uquik.use("/session/", (request, response, next) => {

@@ -95,7 +95,6 @@ class Sessions {
     }
 
     if (entry[0] === EVENTS.MEMORY_LAYOUT) {
-      console.log('memory_layout', entry)
       this.views.memory_layout.update(entry);
     }
 
