@@ -1,0 +1,16 @@
+extends ../layout.pug
+block navbar
+  - var navbarList = [
+      { link: '/', id: 'index', text: 'Overview' },
+      { link: '/heap/type/', id: 'heap-type', text: 'Heap Objects by Type' },
+      { link: '/heap/size/', id: 'heap-size', text: 'Heap Objects by Size' },
+      { link: '/heap/events/', id: 'heap-events', text: 'Heap Events' },
+      { link: '/heap/fragmentation/', id: 'heap-fragmentation', text: 'Heap Fragmentation'},
+      { link: '/execution/', id: 'execution-contexts', text: 'Execution Contexts' },
+      { link: '/log_messages/', id: 'log-messages', text: 'Log Messages' },
+      { link: '/frames/', id: 'frames', text: 'Frames' },
+      { link: '/errors/', id: 'errors', text: 'Errors' }
+    ]
+  ul.list-group
+    each item in navbarList
+      li.list-group-item(class={active:item.id === activePage})= item.text

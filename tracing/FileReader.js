@@ -2,7 +2,10 @@ const lineByLine = require("n-readlines");
 
 class FileReader {
   constructor(file) {
-    this.liner = new lineByLine(file);
+    try {
+      this.liner = new lineByLine(file);
+      this.opened = true;
+    } catch(ex) {}
     this.eof = false;
   }
 
@@ -22,7 +25,7 @@ class FileReader {
   }
 
   get next() {
-    if (this.eof) return null;
+    if (!this.liner || this.eof) return null;
 
     const line = this.liner.next();
     if (line === false) {

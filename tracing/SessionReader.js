@@ -10,12 +10,15 @@ class SessionReader {
     if (!match || match.length < 3) return;
 
     this.fileReader = new FileReader(file);
-
+    if (!this.fileReader.opened) return;
+    
     this.session = new Sessions(match[1]);
     this.session.data_version = Number(match[2]);
   }
 
   read() {
+    if (!this.fileReader.opened) return;
+
     let data;
     while ((data = this.fileReader.next)) {
       this.session.update(data);
