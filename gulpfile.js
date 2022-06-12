@@ -11,7 +11,7 @@ const nodemon = require("./helpers/gulp-nodemon");
 const stripJS = require("gulp-strip-comments");
 const cleanCSS = require("gulp-clean-css");
 const path = require("path");
-let res = require("./templates/resources");
+const res = require("./templates/resources");
 const resources = res.map((r) => path.join("www", r));
 
 const workerFilePath = path.join(__dirname, "src", "worker.js");
