@@ -10,7 +10,7 @@ class FileReader {
   }
 
   parseLine(string) {
-    const entries = string.split(",");
+    const entries = JSON.parse(string);
     if (!entries || entries.length < 2) return null;
 
     return entries;

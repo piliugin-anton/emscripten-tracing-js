@@ -14,7 +14,7 @@ class SummaryView {
 
   update(entry) {
     if (entry[0] === EVENTS.ALLOCATE) {
-      const size = Number(entry[3]);
+      const size = entry[3];
       this.total_allocated += size;
       this.total_allocations += 1;
       this.current_allocated += size;
@@ -29,7 +29,7 @@ class SummaryView {
       );
     } else if (entry[0] === EVENTS.REALLOCATE) {
       const oldSize = this.heap_view.size_for_address(entry[2]);
-      const newSize = Number(entry[4]);
+      const newSize = entry[4];
       const changedSize = newSize - oldSize;
       this.current_allocated = this.current_allocated + changedSize;
       this.peak_allocated = Math.max(

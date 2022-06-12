@@ -106,7 +106,13 @@ uquik.get("/", async (request, response) => {
     sessions: response.locals.sessions,
   };
 
-  response.html(pug.renderFile(path.join(templatesDir, "index.pug"), data));
+  try {
+    console.log(data)
+    const rendered = pug.renderFile(path.join(templatesDir, "index.pug"), data);
+    response.html(rendered);
+  } catch (ex) {
+    response.throw(ex);
+  }
 });
 uquik.use("/", async (request, response, next) => {
   try {

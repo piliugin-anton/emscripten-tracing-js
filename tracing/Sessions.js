@@ -53,9 +53,9 @@ class Sessions {
     // Update context
     if (entry[0] === EVENTS.ENTER_CONTEXT) {
       this.context = this.context.get_child(entry[2], this);
-      this.context.enter(Number(entry[1]));
+      this.context.enter(entry[1]);
     } else if (entry[0] === EVENTS.EXIT_CONTEXT) {
-      this.context.exit(Number(entry[1]));
+      this.context.exit(entry[1]);
       this.context = this.context.parent;
     } else {
       this.context.update(entry, this.heapView);
@@ -64,23 +64,23 @@ class Sessions {
     // Record errors
     if (entry[0] === EVENTS.REPORT_ERROR)
       return this.errors.push(
-        new SessionError(Number(entry[1]), entry[2], entry[3])
+        new SessionError(entry[1], entry[2], entry[3])
       );
 
     // Update per-frame data
     if (entry[0] === EVENTS.FRAME_END) {
-      this.current_frame.complete(Number(entry[1]));
+      this.current_frame.complete(entry[1]);
       this.frames.push(this.current_frame);
       this.current_frame = null;
     } else if (entry[0] === EVENTS.FRAME_START) {
       if (this.current_frame !== null) {
         console.log("this.current_frame is not null!");
-        this.current_frame.complete(Number(entry[1]));
+        this.current_frame.complete(entry[1]);
         this.frames.push(this.current_frame);
       }
       this.current_frame = new SessionFrame(
         this.next_frame_id(),
-        Number(entry[1])
+        entry[1]
       );
     } else if (this.current_frame !== null) {
       this.current_frame.update(entry, this.heapView);
@@ -93,9 +93,17 @@ class Sessions {
     if (entry[0] !== EVENTS.FREE) {
       this.heapView.update(entry, this);
     }
-    this.views.memory_layout.update(entry);
+
+    if (entry[0] === EVENTS.MEMORY_LAYOUT) {
+      console.log('memory_layout', entry)
+      this.views.memory_layout.update(entry);
+    }
+
     this.views.summary.update(entry);
-    this.views.log_messages.update(entry);
+
+    if (entry[0] == EVENTS.LOG_MESSAGE) {
+      this.views.log_messages.update(entry);
+    }
 
     if (entry[0] === EVENTS.FREE) {
       this.heapView.update(entry, this);

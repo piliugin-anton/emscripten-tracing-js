@@ -15,12 +15,12 @@ class SessionFrame {
 
   update(entry, heapView) {
     if (entry[0] === EVENTS.ALLOCATE) {
-      const size = Number(entry[3]);
+      const size = entry[3];
       this.alloc_count = this.alloc_count + 1;
       this.alloc_bytes = this.alloc_bytes + size;
     } else if (entry[0] === EVENTS.REALLOCATE) {
       const oldSize = heapView.size_for_address(entry[2]);
-      const newSize = Number(entry[4]);
+      const newSize = entry[4];
       const changedSize = newSize - oldSize;
       if (changedSize > 0) {
         this.alloc_bytes = this.alloc_bytes + changedSize;

@@ -9,10 +9,8 @@ class MemoryLayoutView {
   }
 
   update(entry) {
-    if (entry[0] === EVENTS.MEMORY_LAYOUT) {
-      this.current = MemoryLayoutData.get(Number(entry[1]), entry[2]);
-      this.snapshots.push(current);
-    }
+    this.current = MemoryLayoutData.get(entry[1], entry[2]);
+    this.snapshots.push(this.current);
   }
 
   get static() {

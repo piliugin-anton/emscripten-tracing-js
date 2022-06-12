@@ -22,13 +22,13 @@ class HeapView {
   update(entry, session) {
     if (entry[0] === EVENTS.ALLOCATE) {
       const address = entry[2];
-      const size = Number(entry[3]);
+      const size = entry[3];
 
       const he = new HeapEntry(
         this.next_event_id(),
         session.FRAME_ID,
         HeapView.EVENT_ALLOCATE,
-        Number(entry[1]),
+        entry[1],
         address,
         size,
         session.context
@@ -40,7 +40,7 @@ class HeapView {
     } else if (entry[0] === EVENTS.REALLOCATE) {
       // XXX: IMPLEMENT
     } else if (entry[0] === EVENTS.FREE) {
-      const timestamp = Number(entry[1]);
+      const timestamp = entry[1];
       const address = entry[2];
 
       const freeEntry = new HeapEntry(
@@ -74,7 +74,7 @@ class HeapView {
       else console.log(`NO ADDRESS MAPPING FOUND FOR ${entry[1]} TO ANNOTATE TYPE "${entry[2]}"`);
     } else if (entry[0] === EVENTS.ASSOCIATE_STORAGE_SIZE) {
       const he = this.entries_by_address[entry[1]];
-      if (he) he.associated_storage_size = Number(entry[2]);
+      if (he) he.associated_storage_size = entry[2];
       else console.log(`NO ADDRESS MAPPING FOUND FOR ${entry[1]} TO ASSOCIATE STORAGE SIZE "${entry[2]}"`);
     }
   }

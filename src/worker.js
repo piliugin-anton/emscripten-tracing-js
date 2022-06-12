@@ -40,7 +40,7 @@ class Tracing {
   }
 
   send(message) {
-    this.queue.push(message);
+    this.queue.push(JSON.stringify(message));
     this._scheduleSend();
   }
 
