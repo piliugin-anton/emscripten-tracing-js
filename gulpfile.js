@@ -14,15 +14,17 @@ const path = require("path");
 
 const workerFilePath = path.join(__dirname, "src", "worker.js");
 const tracingGlob = path.join(__dirname, "tracing", "**/*");
-const webDir = path.join(__dirname, "www")
+const webDir = path.join(__dirname, "www");
 const staticDir = path.join(webDir, "static");
 const style = path.join(staticDir, "style.css");
 const resourcesFile = path.join(__dirname, "templates", "resources.json");
 const serverFile = path.join(__dirname, "server.js");
 
 const getResources = () => {
-  return require("./templates/resources").map((r) => path.join(__dirname, "www", r));
-}
+  return require("./templates/resources.json").map((r) =>
+    path.join(__dirname, "www", r)
+  );
+};
 
 gulp.task("worker.js", () => {
   const browserified = browserify({
@@ -95,8 +97,8 @@ gulp.task("resources", () => {
           compatibility: "*",
           level: {
             1: {
-              specialComments: 0
-            }
+              specialComments: 0,
+            },
           },
         })
       )

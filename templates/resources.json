@@ -22,5 +22,5 @@
     "static/slickgrid/controls/slick.pager.js",
     "static/slickgrid/plugins/slick.rowmovemanager.js",
     "static/slickgrid/plugins/slick.rowselectionmodel.js",
-    "static/chart.min.js"
+    "static/chart.js-3.8.0/chart.min.js"
 ]
