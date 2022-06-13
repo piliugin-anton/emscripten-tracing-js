@@ -139,6 +139,7 @@ class Sessions {
     const year = date.getFullYear();
     const month = months[date.getMonth()];
     const day = date.getDate();
+    // TODO: add zero to h,m,s
     const hours = date.getHours();
     const minutes = date.getMinutes();
     const seconds = date.getSeconds();

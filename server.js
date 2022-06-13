@@ -34,14 +34,15 @@ const cleanup = (dir) => {
     .then((files) =>
       files.forEach((file) => {
         fs.unlink(file, (err) => {
-          if (err) console.log(`Can't delete ${file.name}`);
+          const fileName = path.basename(file);
+          if (err) console.log(`Can't delete ${fileName}`);
           else {
-            console.log(`File ${file.name} deleted successfully!`);
+            console.log(`File ${fileName} deleted successfully!`);
           }
         });
       })
     )
-    .catch((error) => console.log("Error while reading files list", error));
+    .catch((error) => console.log("Error while reading session files list", error));
 };
 
 process.on("SIGINT", () => cleanup(dataDir));

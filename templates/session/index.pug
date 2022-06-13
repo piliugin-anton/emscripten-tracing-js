@@ -54,25 +54,188 @@ block body
                 td= session.views.memory_layout.total
   .row
     h2.sub-header Memory Usage History
-    #chart-memory-usage-history
+    canvas#chart-memory-usage-history
   script. 
-    var myChart = new Chart(document.getElementById('chart-memory-usage'), {
-      type: 'line',
-        data: {
-          labels: ['Red'],
-          datasets: [{
-            label: '# of Votes',
-            data: [12, 19, 3, 5, 2, 3]
-          }]
-        },
-        options: {
-          scales: {
-            xAxis: {
-              type: 'logarithmic',
-              title: {
-                text: 'ms'
-              }
-            }
+    var current = !{JSON.stringify(session.views.memory_layout.current)};
+    var memoryUsage = new Chart(document.getElementById('chart-memory-usage').getContext('2d'), {
+      type: 'bar',
+      data: {
+        labels: [''],
+        datasets: [
+          {
+            label: ['Static'],
+            data: [(current.static_top - current.stack_base)],
+            backgroundColor: [
+              'rgb(45, 114, 139, 0.7)',
+            ],
+            borderColor: [
+              'rgb(45, 114, 139)',
+            ],
+            borderWidth: 1
+          },
+          {
+            label: ['Stack'],
+            data: [(current.stack_top - current.stack_base)],
+            backgroundColor: [
+              'rgba(224, 67, 62, 0.7)',
+            ],
+            borderColor: [
+              'rgb(224, 67, 62)',
+            ],
+            borderWidth: 1
+          },
+          {
+            label: ['Available stack'],
+            data: [(current.stack_max - current.stack_top)],
+            backgroundColor: [
+              'rgba(219, 158, 6, 0.7)',
+            ],
+            borderColor: [
+              'rgb(219, 158, 6)',
+            ],
+            borderWidth: 1
+          },
+          {
+            label: ['Dynamic'],
+            data: [(current.dynamic_top - current.dynamic_base)],
+            backgroundColor: [
+              'rgba(62, 121, 106, 0.7)',
+            ],
+            borderColor: [
+              'rgb(62, 121, 106)',
+            ],
+            borderWidth: 1
+          },
+          {
+            label: ['Available dynamic'],
+            data: [(current.total_memory - current.dynamic_top)],
+            backgroundColor: [
+              'rgba(69, 73, 115, 0.7)',
+            ],
+            borderColor: [
+              'rgb(69, 73, 115)',
+            ],
+            borderWidth: 1
+          }
+        ]
+      },
+      options: {
+        responsive: true,
+        scales: {
+          y: {
+            type: 'linear',
+            title: {
+              display: true,
+              text: 'Size in bytes'
+            },
+            bounds: 'data'
           }
         }
+      }
+    })
+
+    var snapshots = !{JSON.stringify(session.views.memory_layout.snapshots)};
+    var suggestedMin = 0;
+    var suggestedMax = 0;
+    var chartData = snapshots.reduce(function(acc, snapshot) {
+      if (!Array.isArray(acc.static)) acc.static = [];
+      if (!Array.isArray(acc.stack)) acc.stack = [];
+      if (!Array.isArray(acc.available_stack)) acc.available_stack = [];
+      if (!Array.isArray(acc.dynamic)) acc.dynamic = [];
+      if (!Array.isArray(acc.available_dynamic)) acc.available_dynamic = [];
+
+      var static = (snapshot.static_top - snapshot.static_base);
+      var stack = (snapshot.stack_top - snapshot.stack_base);
+      var available_stack = (snapshot.stack_max - snapshot.stack_top);
+      var dynamic = (snapshot.dynamic_top - snapshot.dynamic_base);
+      var available_dynamic = (snapshot.total_memory - snapshot.dynamic_top);
+
+      suggestedMin = Math.min(suggestedMin, static, stack, available_stack, dynamic, available_dynamic);
+      suggestedMax = Math.max(suggestedMax, static, stack, available_stack, dynamic, available_dynamic);
+
+      acc.static.push({
+        x: snapshot.timestamp,
+        y: static
+      });
+
+      acc.stack.push({
+        x: snapshot.timestamp,
+        y: stack
+      });
+
+      acc.available_stack.push({
+        x: snapshot.timestamp,
+        y: available_stack
+      });
+
+      acc.dynamic.push({
+        x: snapshot.timestamp,
+        y: dynamic
+      });
+
+      acc.available_dynamic.push({
+        x: snapshot.timestamp,
+        y: available_dynamic
+      });
+
+      return acc;
+    }, {});
+
+    var memoryUsageHistory = new Chart(document.getElementById('chart-memory-usage-history').getContext('2d'), {
+      type: 'line',
+      data: {
+        datasets: [
+          {
+            label: 'Static',
+            data: chartData.static,
+            borderColor: 'rgb(70, 162, 195)',
+            backgroundColor: 'rgb(45, 114, 139)'
+          },
+          {
+            label: 'Stack',
+            data: chartData.stack,
+            borderColor: 'rgb(232, 119, 115)',
+            backgroundColor: 'rgb(224, 67, 62)'
+          },
+          {
+            label: 'Available stack',
+            data: chartData.available_stack,
+            borderColor: 'rgb(250, 195, 56)',
+            backgroundColor: 'rgb(219, 158, 6)'
+          },
+          {
+            label: 'Dynamic',
+            data: chartData.dynamic,
+            borderColor: 'rgb(93, 172, 152)',
+            backgroundColor: 'rgb(62, 121, 106)'
+          },
+          {
+            label: 'Available dynamic',
+            data: chartData.available_dynamic,
+            borderColor: 'rgb(102, 107, 163)',
+            backgroundColor: 'rgb(69, 73, 115)'
+          }
+        ],
+      },
+      options: {
+        responsice: true,
+        scales: {
+          x: {
+            type: 'linear',
+            title: {
+              display: true,
+              text: 'Milliseconds'
+            },
+          },
+          y: {
+            type: 'linear',
+            title: {
+              display: true,
+              text: 'Size in bytes'
+            },
+            suggestedMin: suggestedMin,
+            suggestedMax: suggestedMax
+          }
+        }
+      }
     });
