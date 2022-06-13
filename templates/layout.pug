@@ -7,18 +7,18 @@ html(lang='en')
     title #{title} — Trace Collector
     link(rel='shortcut icon' href='/static/favicon.ico')
     link(rel='stylesheet' href='/static/bundle.min.css' type='text/css')
-    // Google Ajax loader
-    script(type='text/javascript' src='https://www.google.com/jsapi')
     script(type='text/javascript' src='/static/bundle.min.js')
     block extrahead
   body
     nav#navbar.navbar.navbar-dark.bg-dark(role='navigation')
       a.navbar-brand(href='/') Emscripten tracing JS
+      button.navbar-toggler#sidebarCollapse(type='button' data-toggle='sidebar' aria-expanded='false' aria-label='Toggle navigation')
+        span.navbar-toggler-icon
     .container-fluid.main-container
       .row.main-row
-        .col-sm-3.col-md-2.sidebar
+        .sidebar#sidebar
           block navbar
-        .col-sm-9.col-sm-offset-3.col-md-10.col-md-offset-2.main
+        .main
           h1#page-header.page-header.pb-4= pageTitle
             span.small.text-muted.pull-right= pageSubTitle
           block body

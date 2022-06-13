@@ -10,7 +10,6 @@
 
     "static/jquery/jquery-3.6.0.min.js",
     "static/jquery-ui-1.13.1/jquery-ui.min.js",
-    "static/bootstrap-4.6.1/js/bootstrap.bundle.min.js",
     "static/d3-7.4.4/d3.min.js",
     "static/c3-0.7.2.0/c3.min.js",
     "static/crossfilter-1.5.4/crossfilter.min.js",
@@ -22,5 +21,6 @@
     "static/slickgrid/controls/slick.pager.js",
     "static/slickgrid/plugins/slick.rowmovemanager.js",
     "static/slickgrid/plugins/slick.rowselectionmodel.js",
-    "static/chart.js-3.8.0/chart.min.js"
+    "static/chart.js-3.8.0/chart.min.js",
+    "static/script.js"
 ]

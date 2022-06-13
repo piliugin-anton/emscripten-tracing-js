@@ -22,7 +22,7 @@ html, body {
  */
 
 .main-container {
-  height: calc(100vh - 56px);
+  min-height: calc(100vh - 56px);
 }
 
 .main-row {
@@ -38,50 +38,51 @@ html, body {
  * Sidebar
  */
 
-/* Hide for mobile, show later */
-.sidebar {
-  display: none;
+.navbar-toggler {
+  display: inline-block;
 }
-@media (min-width: 768px) {
-  .sidebar {
-    display: block;
-    padding: 20px;
-    min-height: 100%;
-    background-color: #f5f5f5;
-    border-right: 1px solid #eee;
+
+@media (min-width: 1200px) {
+  .navbar-toggler {
+    display: none;
   }
 }
+/* Hide for mobile, show later */
+.sidebar {
+  flex: 0 1 320px;
+  width: 320px;
+  margin-left: -320px;
+  height: calc(100vh - 56px);
+  position: fixed;
+  top: 56px;
+  left: 0;
+  background-color: #f5f5f5;
+  padding: 15px;
+  border-right: 1px solid #eee;
+  transition: all 0.3s;
+  z-index: 999;
+}
+.sidebar.visible {
+  margin-left: 0;
+}
 
-/* Sidebar navigation */
-.nav-sidebar {
-  margin-right: -21px; /* 20px padding + 1px border */
-  margin-bottom: 20px;
-  margin-left: -20px;
+@media (min-width: 1200px) {
+  .sidebar {
+    position: relative;
+    top: auto;
+    left: auto;
+    margin-left: 0;
+  }
 }
-.nav-sidebar > li > a {
-  padding-right: 20px;
-  padding-left: 20px;
-}
-.nav-sidebar > .active > a,
-.nav-sidebar > .active > a:hover,
-.nav-sidebar > .active > a:focus {
-  color: #fff;
-  background-color: #428bca;
-}
-
 
 /*
  * Main content
  */
 
 .main {
-  padding: 20px;
-}
-@media (min-width: 768px) {
-  .main {
-    padding-right: 40px;
-    padding-left: 40px;
-  }
+  flex: 1 1 calc(100% - 320px);
+  max-width: 100%;
+  padding: 15px;
 }
 .main .page-header {
   margin-top: 0;

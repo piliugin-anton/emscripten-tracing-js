@@ -1,9 +1,9 @@
 extends ../layout.pug
 block navbar
   ul.list-group
-    - var sessionFile = session.session_id+'.'+session.data_version
-    each item in [{ link: '/session/'+sessionFile, id: 'index', text: 'Overview' },{ link: '/heap/'+sessionFile+'/type', id: 'heap-type', text: 'Heap Objects by Type' },{ link: '/heap/'+sessionFile+'/size', id: 'heap-size', text: 'Heap Objects by Size' },{ link: '/heap/'+sessionFile+'/events', id: 'heap-events', text: 'Heap Events' },{ link: '/heap/'+sessionFile+'/fragmentation', id: 'heap-fragmentation', text: 'Heap Fragmentation'},{ link: '/execution/'+sessionFile, id: 'execution-contexts', text: 'Execution Contexts' },{ link: '/log_messages/'+sessionFile, id: 'log-messages', text: 'Log Messages' },{ link: '/frames/'+sessionFile, id: 'frames', text: 'Frames' },{ link: '/errors/'+sessionFile, id: 'errors', text: 'Errors' }]
-      li.list-group-item(class={active:item.id === activePage})
-        a(href=item.link,style={color:item.id === activePage?'#ffffff':'#007bff'})= item.text
+    - var sessionFile = session.session_id + '.' + session.data_version
+    each item in [{ link: '/session/' + sessionFile, id: 'index', text: 'Overview' },{ link: '/heap/' + sessionFile + '/type', id: 'heap-type', text: 'Heap Objects by Type' },{ link: '/heap/' + sessionFile + '/size', id: 'heap-size', text: 'Heap Objects by Size' },{ link: '/heap/' + sessionFile + '/events', id: 'heap-events', text: 'Heap Events' },{ link: '/heap/' + sessionFile + '/fragmentation', id: 'heap-fragmentation', text: 'Heap Fragmentation'},{ link: '/execution/' + sessionFile, id: 'execution-contexts', text: 'Execution Contexts' },{ link: '/log_messages/' + sessionFile, id: 'log-messages', text: 'Log Messages' },{ link: '/frames/' + sessionFile, id: 'frames', text: 'Frames' },{ link: '/errors/' + sessionFile, id: 'errors', text: 'Errors' }]
+      li.list-group-item(class={ active:item.id === activePage })
+        a(href=item.link,style={ color:item.id === activePage ? '#ffffff' : '#007bff' })= item.text
         if item.id == 'errors'
           span.badge.badge-pill.badge-info.float-right= session.errors.length

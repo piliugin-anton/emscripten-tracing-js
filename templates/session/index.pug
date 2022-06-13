@@ -1,7 +1,7 @@
 extends layout.pug
 block body
   .row.pb-4
-    .col-md-6
+    .col-md-12.col-lg-6
       h2.sub-header Allocation Summary
       #table-allocation-summary
         table.table
@@ -24,7 +24,7 @@ block body
               td= session.views.summary.total_allocated_formatted
               td= session.views.summary.total_allocations.toLocaleString()
     if session.views.memory_layout.current
-      .col-md-6
+      .col-md-12.col-lg-6
         h2.sub-header Memory Usage
         canvas#chart-memory-usage
         #table-memory-usage

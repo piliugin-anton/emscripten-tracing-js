@@ -1,29 +1,30 @@
 extends layout.pug
 block body
-  table#sessions.table.table-striped.table-hover
-    if sessions && sessions.length
-      thead
-        tr
-          th Session ID
-          th Date and time
-          th Application
-          th Username
-          th Peak Allocated
-          th Errors?
-      tbody
-        each session in sessions
+  .table-responsive
+    table#sessions.table.table-striped.table-hover
+      if sessions && sessions.length
+        thead
           tr
-            td
-              a(href='/session/' + session.fileName)= session.name
-            td= session.name_formatted
-            td= session.application
-            td= session.username
-            td(data-order=session.peak_allocated)= session.peak_allocated_formatted
-            if session.errors.length
-              td.table-danger= session.errors.length
-            else
-              td.table-success(data-order='0') None
-    else
-      tbody
-        tr
-          td No sessions found
+            th.text-nowrap Session ID
+            th.text-nowrap Date and time
+            th.text-nowrap Application
+            th.text-nowrap Username
+            th.text-nowrap Peak Allocated
+            th.text-nowrap Errors?
+        tbody
+          each session in sessions
+            tr
+              td.align-middle
+                a(href='/session/' + session.fileName)= session.name
+              td.align-middle= session.name_formatted
+              td.align-middle= session.application
+              td.align-middle= session.username
+              td.align-middle.text-center(data-order=session.peak_allocated)= session.peak_allocated_formatted
+              if session.errors.length
+                td.align-middle.text-center.table-danger= session.errors.length
+              else
+                td.align-middle.text-center.table-success(data-order='0') None
+      else
+        tbody
+          tr
+            td No sessions found
