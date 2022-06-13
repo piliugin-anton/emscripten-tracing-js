@@ -7,9 +7,9 @@ block body
         table.table
           thead.thead-dark
             tr
-              th(scope='col') Type
-              th(scope='col') Size
-              th(scope='col') # of operations
+              th.align-middle(scope='col') Type
+              th.align-middle(scope='col') Size
+              th.align-middle(scope='col') # of operations
           tbody
             tr
               th(scope='row') Current
@@ -53,8 +53,9 @@ block body
                 th(scope='row') Total
                 td= session.views.memory_layout.total
   .row
-    h2.sub-header Memory Usage History
-    canvas#chart-memory-usage-history
+    .col-12
+      h2.sub-header Memory Usage History
+      canvas#chart-memory-usage-history
   script. 
     var current = !{JSON.stringify(session.views.memory_layout.current)};
     var memoryUsage = new Chart(document.getElementById('chart-memory-usage').getContext('2d'), {

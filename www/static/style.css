@@ -52,7 +52,7 @@ html, body {
   flex: 0 1 320px;
   width: 320px;
   margin-left: -320px;
-  height: calc(100vh - 56px);
+  min-height: calc(100vh - 56px);
   position: fixed;
   top: 56px;
   left: 0;
