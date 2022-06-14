@@ -18,7 +18,9 @@ html(lang='en')
       .row.main-row
         .sidebar#sidebar
           block navbar
-        .main
+        .col
           h1#page-header.page-header.pb-4= pageTitle
-            span.subTitle.text-muted.float-right !{pageSubTitle}
-          block body
+            span 
+            span.subTitle.text-muted.float-lg-right.pt-2 !{pageSubTitle}
+          .row
+            block body

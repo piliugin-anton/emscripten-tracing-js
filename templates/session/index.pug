@@ -1,61 +1,57 @@
 extends layout.pug
 block body
-  .row.pb-4
-    .col-md-12.col-lg-6
-      h2.sub-header Allocation Summary
-      #table-allocation-summary
-        table.table
-          thead.thead-dark
-            tr
-              th.align-middle(scope='col') Type
-              th.align-middle(scope='col') Size
-              th.align-middle(scope='col') # of operations
-          tbody
-            tr
-              th(scope='row') Current
-              td= session.views.summary.current_allocated_formatted
-              td= session.views.summary.current_allocations.toLocaleString()
-            tr
-              th(scope='row') Peak
-              td= session.views.summary.peak_allocated_formatted
-              td= session.views.summary.peak_allocations.toLocaleString()
-            tr
-              th(scope='row') Total
-              td= session.views.summary.total_allocated_formatted
-              td= session.views.summary.total_allocations.toLocaleString()
-    if session.views.memory_layout.current
-      .col-md-12.col-lg-6
-        h2.sub-header Memory Usage
-        canvas#chart-memory-usage
-        #table-memory-usage
-          table.table
-            thead.thead-dark
-              tr
-                th(scop='col') Type
-                th(scope='col') Size
-            tbody
-              tr
-                th(scope='row') Static
-                td= session.views.memory_layout.static
-              tr
-                th(scope='row') Stack
-                td= session.views.memory_layout.stack
-              tr
-                th(scope='row') Available Stack
-                td= session.views.memory_layout.available_stack
-              tr
-                th(scope='row') Dynamic
-                td= session.views.memory_layout.dynamic
-              tr
-                th(scope='row') Available Dynamic
-                td= session.views.memory_layout.available_dynamic
-              tr
-                th(scope='row') Total
-                td= session.views.memory_layout.total
-  .row
-    .col-12
-      h2.sub-header Memory Usage History
-      canvas#chart-memory-usage-history
+  .col-12.col-lg-6
+    h2.sub-header Allocation Summary
+    table.table
+      thead.thead-dark
+        tr
+          th.align-middle(scope='col') Type
+          th.align-middle(scope='col') Size
+          th.align-middle(scope='col') # of operations
+      tbody
+        tr
+          th(scope='row') Current
+          td= session.views.summary.current_allocated_formatted
+          td= session.views.summary.current_allocations.toLocaleString()
+        tr
+          th(scope='row') Peak
+          td= session.views.summary.peak_allocated_formatted
+          td= session.views.summary.peak_allocations.toLocaleString()
+        tr
+          th(scope='row') Total
+          td= session.views.summary.total_allocated_formatted
+          td= session.views.summary.total_allocations.toLocaleString()
+  if session.views.memory_layout.current
+    .col-12.col-lg-6
+      h2.sub-header Memory Usage
+      canvas#chart-memory-usage
+      table.table
+        thead.thead-dark
+          tr
+            th(scop='col') Type
+            th(scope='col') Size
+        tbody
+          tr
+            th(scope='row') Static
+            td= session.views.memory_layout.static
+          tr
+            th(scope='row') Stack
+            td= session.views.memory_layout.stack
+          tr
+            th(scope='row') Available Stack
+            td= session.views.memory_layout.available_stack
+          tr
+            th(scope='row') Dynamic
+            td= session.views.memory_layout.dynamic
+          tr
+            th(scope='row') Available Dynamic
+            td= session.views.memory_layout.available_dynamic
+          tr
+            th(scope='row') Total
+            td= session.views.memory_layout.total
+  .col-12
+    h2.sub-header Memory Usage History
+    canvas#chart-memory-usage-history
   script. 
     var current = !{JSON.stringify(session.views.memory_layout.current)};
     var memoryUsage = new Chart(document.getElementById('chart-memory-usage').getContext('2d'), {
