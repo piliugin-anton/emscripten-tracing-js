@@ -1,8 +1,8 @@
 extends layout.pug
 block body
-  .table-responsive
-    table.table.table-striped.table-hover
-      if sessions && sessions.length
+  if sessions && sessions.length
+    .table-responsive.col-12
+      table.table.table-striped.table-hover
         thead
           tr
             th.text-nowrap Session ID
@@ -15,7 +15,7 @@ block body
           each session in sessions
             tr
               td.align-middle
-                a(href='/session/' + session.fileName)= session.name
+                a(href=`/session/${session.fileName}/overview`)= session.name
               td.align-middle= session.name_formatted
               td.align-middle= session.application
               td.align-middle= session.username
@@ -24,7 +24,5 @@ block body
                 td.align-middle.text-center.table-danger= session.errors.length
               else
                 td.align-middle.text-center.table-success(data-order='0') None
-      else
-        tbody
-          tr
-            td No sessions found
+  else
+    .col-12 No sessions found

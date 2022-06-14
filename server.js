@@ -1,7 +1,7 @@
 const fs = require("fs");
 const path = require("path");
 const { Server, StaticFiles, CORS, CustomError } = require("uquik");
-const pug = require('pug');
+const pug = require("pug");
 const SessionReader = require("./tracing/SessionReader");
 
 const port = 5000;
@@ -42,7 +42,9 @@ const cleanup = (dir) => {
         });
       })
     )
-    .catch((error) => console.log("Error while reading session files list", error));
+    .catch((error) =>
+      console.log("Error while reading session files list", error)
+    );
 };
 
 process.on("SIGINT", () => cleanup(dataDir));
@@ -128,36 +130,72 @@ uquik.use("/", async (request, response, next) => {
   }
 });
 
-uquik.get("/session/:fileName", async (request, response) => {
+uquik.get("/session/:fileName/:infoType", (request, response) => {
+  const info = {
+    overview: {
+      title: "Overview",
+      pageTitle: "Overview",
+      activePage: "index",
+      template: path.join("session", "index.pug"),
+    },
+    heap_type: {
+      title: "Heap Objects by Type",
+      pageTitle: "Heap Objects by Type",
+      activePage: "heap-type",
+      template: path.join("session", "heap", "type.pug"),
+    },
+  };
+
+  const dataInfo = info[infoType];
+
+  if (!dataInfo)
+    return response.html(
+      pug.renderFile(path.join(templatesDir, "error.pug"), {
+        title: "Error",
+        pageTitle: "Error",
+        message: "Page not found",
+      })
+    );
+
   const data = {
-    title: "Overview",
-    pageTitle: "Overview",
+    title: dataInfo.title,
+    pageTitle: dataInfo.pageTitle,
+    activePage: dataInfo.activePage,
     pageSubTitle: `${response.locals.session.name} &mdash; ${response.locals.session.application} &mdash; ${response.locals.session.username}`,
     session: response.locals.session,
-    activePage: "index"
   };
 
   try {
-    const rendered = pug.renderFile(path.join(templatesDir, "session", "index.pug"), data);
+    const rendered = pug.renderFile(
+      path.join(templatesDir, dataInfo.template),
+      data
+    );
     response.html(rendered);
-  } catch(ex) {
+  } catch (ex) {
     response.throw(ex);
   }
 });
 uquik.use("/session/", (request, response, next) => {
-  const fileName = `${request.path_parameters.get("fileName")}.emscripten`;
-  const sessionReader = new SessionReader(path.join(dataDir, fileName));
-  sessionReader.read();
+  const infoType = request.path_parameters.get("infoType");
+  if (infoType === "overview") {
+    const fileName = `${request.path_parameters.get("fileName")}.emscripten`;
+    const sessionReader = new SessionReader(path.join(dataDir, fileName));
+    sessionReader.read();
 
-  if (!sessionReader.session) return response.html(pug.renderFile(path.join(templatesDir, "errors.pug"), {
-    title: "Error",
-    pageTitle: "Error",
-    message: "Cannot load session"
-  }));/*next(new CustomError("Cannot load session", 404));*/
+    if (!sessionReader.session)
+      return response.html(
+        pug.renderFile(path.join(templatesDir, "error.pug"), {
+          title: "Error",
+          pageTitle: "Error",
+          message: "Cannot load session",
+        })
+      );
 
-  response.locals.session = sessionReader.session;
+    response.locals.session = sessionReader.session;
+  }
+
   next();
-})
+});
 
 uquik
   .listen(port, host)
