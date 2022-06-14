@@ -88,6 +88,10 @@ html, body {
   margin-top: 0;
 }
 
+.subTitle {
+  font-size: 18px;
+}
+
 /*
  * Time Slider
  */

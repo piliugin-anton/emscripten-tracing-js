@@ -1,2 +1,0 @@
-<% layout('./layout.eta', { title: `Error ${it.code}`, pagetitle: it.pageTitle }) %>
-<p><%= it.message %>

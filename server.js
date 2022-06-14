@@ -47,9 +47,7 @@ const cleanup = (dir) => {
 
 process.on("SIGINT", () => cleanup(dataDir));
 
-const uquik = new Server({
-  json_errors: true,
-});
+const uquik = new Server();
 
 const static = StaticFiles({ root: path.join(__dirname, "www") });
 
@@ -134,6 +132,7 @@ uquik.get("/session/:fileName", async (request, response) => {
   const data = {
     title: "Overview",
     pageTitle: "Overview",
+    pageSubTitle: `${response.locals.session.name} &mdash; ${response.locals.session.application} &mdash; ${response.locals.session.username}`,
     session: response.locals.session,
     activePage: "index"
   };
@@ -150,7 +149,11 @@ uquik.use("/session/", (request, response, next) => {
   const sessionReader = new SessionReader(path.join(dataDir, fileName));
   sessionReader.read();
 
-  if (!sessionReader.session) return next(new CustomError("Cannot load session", 404));
+  if (!sessionReader.session) return response.html(pug.renderFile(path.join(templatesDir, "errors.pug"), {
+    title: "Error",
+    pageTitle: "Error",
+    message: "Cannot load session"
+  }));/*next(new CustomError("Cannot load session", 404));*/
 
   response.locals.session = sessionReader.session;
   next();
