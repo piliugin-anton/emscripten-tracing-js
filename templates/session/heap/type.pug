@@ -2,7 +2,7 @@ extends session/layout.pug
 block body
   #grid-container
     #table-controls
-      a.btn.btn-default(href='/api/v1/session/{{ session.sessionID }}/heap/by_type/?format=csv') Download as CSV
+      a.btn.btn-default(href='/csv/#{sessionId}/heap_type') Download as CSV
     #heap-objects-by-type(style='height: 100%;')
     #pager(style='height: 20px;')
   script(type='text/javascript').

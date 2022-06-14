@@ -136,14 +136,12 @@ uquik.get("/session/:fileName/:infoType", (request, response) => {
       title: "Overview",
       pageTitle: "Overview",
       activePage: "index",
-      session: response.locals.session,
       template: path.join("session", "index.pug"),
     },
     heap_type: {
       title: "Heap Objects by Type",
       pageTitle: "Heap Objects by Type",
       activePage: "heap-type",
-      session: response.locals.session,
       template: path.join("session", "heap", "type.pug"),
     },
   };
@@ -180,22 +178,20 @@ uquik.get("/session/:fileName/:infoType", (request, response) => {
 uquik.use("/session/", (request, response, next) => {
   request.locals.infoType = request.path_parameters.get("infoType");
   request.locals.fileName = request.path_parameters.get("fileName");
-  if (request.locals.infoType === "overview") {
-    const fileName = `${request.locals.fileName}.emscripten`;
-    const sessionReader = new SessionReader(path.join(dataDir, fileName));
-    sessionReader.read();
+  const fileName = `${request.locals.fileName}.emscripten`;
+  const sessionReader = new SessionReader(path.join(dataDir, fileName));
+  sessionReader.read();
 
-    if (!sessionReader.session)
-      return response.html(
-        pug.renderFile(path.join(templatesDir, "error.pug"), {
-          title: "Error",
-          pageTitle: "Error",
-          message: "Cannot load session",
-        })
-      );
+  if (!sessionReader.session)
+    return response.html(
+      pug.renderFile(path.join(templatesDir, "error.pug"), {
+        title: "Error",
+        pageTitle: "Error",
+        message: "Cannot load session",
+      })
+    );
 
-    response.locals.session = sessionReader.session;
-  }
+  response.locals.session = sessionReader.session;
 
   next();
 });
