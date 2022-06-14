@@ -136,17 +136,19 @@ uquik.get("/session/:fileName/:infoType", (request, response) => {
       title: "Overview",
       pageTitle: "Overview",
       activePage: "index",
+      session: response.locals.session,
       template: path.join("session", "index.pug"),
     },
     heap_type: {
       title: "Heap Objects by Type",
       pageTitle: "Heap Objects by Type",
       activePage: "heap-type",
+      session: response.locals.session,
       template: path.join("session", "heap", "type.pug"),
     },
   };
 
-  const dataInfo = info[infoType];
+  const dataInfo = info[request.locals.infoType];
 
   if (!dataInfo)
     return response.html(
@@ -176,9 +178,10 @@ uquik.get("/session/:fileName/:infoType", (request, response) => {
   }
 });
 uquik.use("/session/", (request, response, next) => {
-  const infoType = request.path_parameters.get("infoType");
-  if (infoType === "overview") {
-    const fileName = `${request.path_parameters.get("fileName")}.emscripten`;
+  request.locals.infoType = request.path_parameters.get("infoType");
+  request.locals.fileName = request.path_parameters.get("fileName");
+  if (request.locals.infoType === "overview") {
+    const fileName = `${request.locals.fileName}.emscripten`;
     const sessionReader = new SessionReader(path.join(dataDir, fileName));
     sessionReader.read();
 
