@@ -51,7 +51,9 @@ process.on("SIGINT", () => cleanup(dataDir));
 
 const uquik = new Server();
 
-const static = StaticFiles({ root: path.join(__dirname, "www") });
+const static = StaticFiles({
+  root: path.join(__dirname, "www")
+});
 
 uquik.use(
   CORS({
@@ -163,6 +165,7 @@ uquik.get("/session/:fileName/:infoType", (request, response) => {
     activePage: dataInfo.activePage,
     pageSubTitle: `${response.locals.session.name} &mdash; ${response.locals.session.application} &mdash; ${response.locals.session.username}`,
     session: response.locals.session,
+    fileName: request.locals.fileName
   };
 
   try {
@@ -183,13 +186,39 @@ uquik.use("/session/", (request, response, next) => {
   sessionReader.read();
 
   if (!sessionReader.session)
-    return response.html(
+    return response.status(404).html(
       pug.renderFile(path.join(templatesDir, "error.pug"), {
         title: "Error",
         pageTitle: "Error",
         message: "Cannot load session",
       })
     );
+
+  response.locals.session = sessionReader.session;
+
+  next();
+});
+
+uquik.get("/api/session/:fileName/:method", (request, response) => {
+  const data = {
+    heap_type: response.locals.session.heapView.heap_allocation_data_by_type()
+  }
+  const reply = data[request.locals.method];
+  if (!reply) return response.status(400).json({ error: "Bad request" });
+
+  console.log(reply);
+
+  response.json(reply);
+});
+uquik.use("/api/session/", (request, response, next) => {
+  request.locals.fileName = request.path_parameters.get("fileName");
+  request.locals.method = request.path_parameters.get("method");
+  const fileName = `${request.locals.fileName}.emscripten`;
+  const sessionReader = new SessionReader(path.join(dataDir, fileName));
+  sessionReader.read();
+
+  if (!sessionReader.session)
+    return response.status(404).json({ error: "Can't load session" });
 
   response.locals.session = sessionReader.session;
 

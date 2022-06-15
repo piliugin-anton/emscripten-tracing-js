@@ -1,12 +1,7 @@
 [
-    "static/bootstrap-4.6.1/css/bootstrap.min.css",
-    "static/jquery-ui-1.13.1/jquery-ui.min.css",
+    
     "static/c3-0.7.2.0/c3.min.css",
     "static/jquery-ui-plugins/jquery-ui-slider-pips.min.css",
-    "static/slickgrid/slick.grid.css",
-    "static/slickgrid/slick-default-theme.css",
-    "static/slickgrid/controls/slick.pager.css",
-    "static/style.css",
 
     "static/jquery/jquery-3.6.0.min.js",
     "static/jquery-ui-1.13.1/jquery-ui.min.js",

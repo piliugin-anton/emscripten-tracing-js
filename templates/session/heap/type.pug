@@ -1,8 +1,22 @@
-extends session/layout.pug
+extends ../layout.pug
+block extrahead 
+  link(href='/static/slickgrid/slick.grid.css' rel='stylesheet')
+  link(href='/static/slickgrid/slick-default-theme.css' rel='stylesheet')
+  link(href='/static/slickgrid/controls/slick.pager.css' rel='stylesheet')
+  link(href='/static/jquery-ui-1.13.1/jquery-ui.min.css' rel='stylesheet')
+  link(href='/static/jquery-ui-1.13.1/jquery-ui.theme.min.css' rel='stylesheet')
+  script(type='text/javascript' src='/static/jquery-ui-1.13.1/jquery-ui.min.js')
+  script(type='text/javascript' src='/static/slickgrid/lib/jquery.event.drag-2.3.0.js')
+  script(type='text/javascript' src='/static/slickgrid/slick.core.js')
+  script(type='text/javascript' src='/static/slickgrid/slick.grid.js')
+  script(type='text/javascript' src='/static/slickgrid/slick.dataview.js')
+  script(type='text/javascript' src='/static/slickgrid/controls/slick.pager.js')
+  script(type='text/javascript' src='/static/slickgrid/plugins/slick.rowmovemanager.js')
+  script(type='text/javascript' src='/static/slickgrid/plugins/slick.rowselectionmodel.js')
 block body
-  #grid-container
+  #grid-container.col-12
     #table-controls
-      a.btn.btn-default(href='/csv/#{sessionId}/heap_type') Download as CSV
+      a.btn.btn-primary.mb-3(href=`/csv/${fileName}/heap_type`) Download as CSV
     #heap-objects-by-type(style='height: 100%;')
     #pager(style='height: 20px;')
   script(type='text/javascript').
@@ -13,43 +27,43 @@ block body
       cssClass: 'text-left'},
       {id: 'count_all', name: 'Count (all)', field: 'count_all',
       sortable: true,
-      minWidth: 50, maxWidth: 100,
+      minWidth: 90, maxWidth: 110,
       cssClass: 'text-right'},
       {id: 'count_live', name: 'Count (live)', field: 'count_live',
       sortable: true,
-      minWidth: 50, maxWidth: 100,
+      minWidth: 100, maxWidth: 120,
       cssClass: 'text-right'},
       {id: 'average_bytes_all', name: 'Bytes (all, avg)', field: 'average_bytes_all',
       sortable: true,
-      minWidth: 75, maxWidth: 120,
+      minWidth: 120, maxWidth: 200,
       cssClass: 'text-right'},
       {id: 'average_bytes_live', name: 'Bytes (live, avg)', field: 'average_bytes_live',
       sortable: true,
-      minWidth: 75, maxWidth: 120,
+      minWidth: 130, maxWidth: 200,
       cssClass: 'text-right'},
       {id: 'total_bytes_all', name: 'Bytes (all, sum)', field: 'total_bytes_all',
       sortable: true,
-      minWidth: 75, maxWidth: 120,
+      minWidth: 130, maxWidth: 200,
       cssClass: 'text-right'},
       {id: 'total_bytes_live', name: 'Bytes (live, sum)', field: 'total_bytes_live',
       sortable: true,
-      minWidth: 75, maxWidth: 120,
+      minWidth: 130, maxWidth: 200,
       cssClass: 'text-right'},
       {id: 'average_storage_size_all', name: 'Associated (bytes) (all, avg)', field: 'average_storage_size_all',
       sortable: true,
-      minWidth: 75, maxWidth: 120,
+      minWidth: 210, maxWidth: 210,
       cssClass: 'text-right'},
       {id: 'average_storage_size_live', name: 'Associated (bytes) (live, avg)', field: 'average_storage_size_live',
       sortable: true,
-      minWidth: 75, maxWidth: 120,
+      minWidth: 220, maxWidth: 220,
       cssClass: 'text-right'},
       {id: 'total_storage_size_all', name: 'Associated (bytes) (all, sum)', field: 'total_storage_size_all',
       sortable: true,
-      minWidth: 75, maxWidth: 120,
+      minWidth: 220, maxWidth: 220,
       cssClass: 'text-right'},
       {id: 'total_storage_size_live', name: 'Associated (bytes) (live, sum)', field: 'total_storage_size_live',
       sortable: true,
-      minWidth: 75, maxWidth: 120,
+      minWidth: 220, maxWidth: 220,
       cssClass: 'text-right'},
     ];
     var options = {
@@ -90,9 +104,9 @@ block body
     }
     resizeGridContainer();
     $(window).resize(resizeGridContainer);
-    $.getJSON('/api/v1/session/{{ session.sessionID }}/heap/by_type/', function(response) {
+    $.getJSON('/api/session/#{fileName}/heap_type', function(response) {
       dataView.beginUpdate();
-      dataView.setItems(response.data);
+      dataView.setItems(response);
       dataView.endUpdate();
     });
 
