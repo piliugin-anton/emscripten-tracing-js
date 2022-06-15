@@ -16,8 +16,9 @@
   "license": "ISC",
   "dependencies": {
     "n-readlines": "^1.0.1",
+    "papaparse": "^5.3.2",
     "pug": "^3.0.2",
-    "uquik": "^1.0.22"
+    "uquik": "^1.0.23"
   },
   "devDependencies": {
     "@babel/preset-env": "^7.18.2",

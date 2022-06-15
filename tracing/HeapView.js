@@ -93,7 +93,7 @@ class HeapView {
   }
 
   avg(total, count) {
-    if (count > 0) return (total / count).toFixed(0);
+    if (count > 0) return Math.trunc(total / count);
     else return 0;
   }
 
