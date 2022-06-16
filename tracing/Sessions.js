@@ -101,7 +101,7 @@ class Sessions {
     this.views.summary.update(entry);
 
     if (entry[0] == EVENTS.LOG_MESSAGE) {
-      this.views.log_messages.update(entry);
+      this.views.log_messages.update(entry, this);
     }
 
     if (entry[0] === EVENTS.FREE) {
@@ -124,7 +124,7 @@ class Sessions {
     const childrenLength = context.children.length;
     if (childrenLength) {
       for (let i = 0; i < childrenLength; i++) {
-        this.add_context_data(contexts, children[i], indent + 1);
+        this.add_context_data(contexts, context.children[i], indent + 1);
       }
     }
   }

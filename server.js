@@ -113,6 +113,18 @@ uquik.get("/session/:sessionKey/:infoType", (request, response) => {
       pageTitle: "Heap Fragmentation",
       activePage: "heap-fragmentation",
       template: path.join("session", "heap", "fragmentation.pug"),
+    },
+    execution_contexts: {
+      title: "Execution Contexts",
+      pageTitle: "Execution Contexts",
+      activePage: "execution-contexts",
+      template: path.join("session", "execution.pug"),
+    },
+    log_messages: {
+      title: "Log Messages",
+      pageTitle: "Log Messages",
+      activePage: "log-messages",
+      template: path.join("session", "log_messages.pug"),
     }
   };
 
@@ -142,6 +154,7 @@ uquik.get("/session/:sessionKey/:infoType", (request, response) => {
     );
     response.html(rendered);
   } catch (ex) {
+    console.log(ex)
     response.throw(ex);
   }
 });
@@ -179,7 +192,8 @@ uquik.get("/api/session/:sessionKey/:method", (request, response) => {
       context: he.context.full_name,
       matching_event_id: he.matching_event_id
     })),
-    heap_fragmentation: response.locals.session.heapView.heap_fragmentation_data()
+    heap_fragmentation: response.locals.session.heapView.heap_fragmentation_data(),
+    execution: response.locals.session.get_flattened_context_data()
   };
 
   const reply = data[request.locals.method];
