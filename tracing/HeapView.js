@@ -184,19 +184,15 @@ class HeapView {
 
       if (!exists) size_data[e.size] = d;
     }
-    sizes = size_data.values();
-    // TODO: sort
-    //sizes.sort(lambda x,y: cmp(x['size'], y['size']))
-    return sizes;
+
+    return Object.values(size_data).sort((a, b) => b.size - a.size);
   }
 
   heap_fragmentation_data() {
-    const allocations = this.entries_by_address.values();
+    const allocations = Object.values(this.entries_by_address).sort((a, b) => a.address - b.address);
     const holes = [];
     let lastAllocationEnd = 0;
     if (allocations.length > 1) {
-      // TODO: sort
-      //allocations.sort(lambda x,y: cmp(x.address, y.address))
       lastAllocationEnd = allocations[0].address;
       const allocations_length = allocations.length;
       for (let i = 0; i < allocations_length; i++) {
@@ -227,12 +223,9 @@ class HeapView {
       if (!exist) hole_data[hole_size] = d;
     }
 
-    holes = hole_data.values();
-    //holes.sort(lambda x,y: cmp(x['size'], y['size']))
     return {
-      holes: holes,
-      fragmentation_percentage:
-        (total_hole_size / float(lastAllocationEnd)) * 100,
+      holes: Object.values(hole_data).sort((a, b) => b.size - a.size),
+      fragmentation_percentage: (total_hole_size / lastAllocationEnd) * 100,
       total_hole_size: total_hole_size,
       last_allocation_top: lastAllocationEnd,
     };

@@ -96,6 +96,12 @@ uquik.get("/session/:sessionKey/:infoType", (request, response) => {
       activePage: "heap-type",
       template: path.join("session", "heap", "type.pug"),
     },
+    heap_size: {
+      title: "Heap Objects by Size",
+      pageTitle: "Heap Objects by Size",
+      activePage: "heap-size",
+      template: path.join("session", "heap", "size.pug"),
+    }
   };
 
   const dataInfo = info[request.locals.infoType];
@@ -147,6 +153,7 @@ uquik.use("/session/", (request, response, next) => {
 uquik.get("/api/session/:sessionKey/:method", (request, response) => {
   const data = {
     heap_type: response.locals.session.heapView.heap_allocation_data_by_type(),
+    heap_size: response.locals.session.heapView.heap_allocation_data_by_size(),
   };
   const reply = data[request.locals.method];
   if (!reply) return response.status(400).json({ error: "Bad request" });
