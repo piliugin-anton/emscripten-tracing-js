@@ -1,0 +1,122 @@
+extends ../layout.pug
+block body
+  #grid-container.col-12
+    #heap-fragmentation-gauge.container(style='height: 120px;')
+      .row
+        .col-md-3
+          #fragmentation-summary
+        .col-md-9
+          canvas#fragmentation-gauge
+    #heap-fragmentation(style='height: 100%;')
+    #pager(style='height: 20px;')
+  script(type='text/javascript').
+    var columns = [
+      {id: 'id', name: 'Size', field: 'size',
+      sortable: true,
+      minWidth: 50, maxWidth: 100,
+      cssClass: 'text-right'},
+      {id: 'count', name: 'Count', field: 'count',
+      sortable: true,
+      minWidth: 50, maxWidth: 100,
+      cssClass: 'text-right'},
+      {id: 'bytes', name: 'Bytes', field: 'bytes',
+      sortable: true,
+      minWidth: 50, maxWidth: 100,
+      cssClass: 'text-right'},
+    ];
+    var options = {
+      enableCellNavigation: true,
+      enableColumnReorder: false,
+      autoExpandColumns: true
+    };
+    var data = [];
+    var dataView = new Slick.Data.DataView({ inlineFilters: true });
+    var grid = new Slick.Grid("#heap-fragmentation", dataView, columns, options);
+    grid.setSelectionModel(new Slick.RowSelectionModel());
+    var pager = new Slick.Controls.Pager(dataView, grid, $("#pager"));
+    grid.onSort.subscribe(function(e, args) {
+      var comparer = function(a, b) {
+        return (a[args.sortCol.field] > b[args.sortCol.field]) ? 1 : -1;
+      }
+      dataView.sort(comparer, args.sortAsc);
+    });
+    dataView.onRowCountChanged.subscribe(function (e, args) {
+      grid.updateRowCount();
+      grid.render();
+    });
+    dataView.onRowsChanged.subscribe(function (e, args) {
+      grid.invalidateRows(args.rows);
+      grid.render();
+    });
+    dataView.beginUpdate();
+    dataView.setItems(data);
+    dataView.endUpdate();
+    function resizeGridContainer() {
+      $("#grid-container").height(
+        $(window).height() -
+        $("#heap-fragmentation-gauge").outerHeight() -
+        $("#navbar").outerHeight() -
+        $("#page-header").outerHeight() - 105
+      );
+      grid.resizeCanvas();
+    }
+    /*var gauge = c3.generate({
+    bindto: '#fragmentation-gauge',
+    size: {
+    height: 120
+    },
+    data: {
+    columns: [['Fragmentation', 0]],
+    type: 'gauge'
+    },
+    color: {
+    pattern: ['#60B044', '#F6C600', '#F97600', '#FF0000'], // the three color levels for the percentage values.
+    threshold: {
+    values: [10, 30, 50, 100]
+    }
+    }
+    });*/
+    resizeGridContainer();
+    $(window).resize(resizeGridContainer);
+    $.getJSON('/api/session/#{session.key}/heap_fragmentation', function(response) {
+      dataView.beginUpdate();
+      dataView.setItems(response.holes);
+      dataView.endUpdate();
+      $("#fragmentation-summary").html("<p>Out of " + response.last_allocation_top + " bytes allocated, " + response.total_hole_size + " is in holes.");
+      var gauge = new Chart(document.getElementById("fragmentation-gauge").getContext("2d"), {
+        type: 'gauge',
+        data: {
+          datasets: [{
+            value: response.fragmentation_percentage,
+            minValue: 0,
+            data: [10, 30, 50, 100],
+            backgroundColor: ['#60B044', '#F6C600', '#F97600', '#FF0000'],
+          }]
+        },
+        options: {
+          responsive: false,
+          needle: {
+            radiusPercentage: 2,
+            widthPercentage: 3.2,
+            lengthPercentage: 100,
+            color: 'rgba(0, 0, 0, 1)'
+          },
+          valueLabel: {
+            display: true,
+            formatter: (value) => {
+              return '$' + Math.round(value);
+            },
+            color: 'rgba(255, 255, 255, 1)',
+            backgroundColor: 'rgba(0, 0, 0, 1)',
+            borderRadius: 5,
+            padding: {
+              top: 10,
+              bottom: 10
+            }
+          }
+        }
+      });
+    /*gauge.load({
+    columns: [['Fragmentation', response.data.fragmentation_percentage + 1]]
+    });*/
+    });

@@ -147,6 +147,10 @@ html, body {
   font-weight: bold;
 }
 
+canvas#fragmentation-gauge {
+  width: 200px !important;
+}
+
 /* For tree views */
 .toggle {
   height: 9px;

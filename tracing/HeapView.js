@@ -198,16 +198,18 @@ class HeapView {
       for (let i = 0; i < allocations_length; i++) {
         const allocation = allocations[i];
         allocationStart = allocation.address;
-        if (lastAllocationEnd < allocationStart)
+        if (lastAllocationEnd < allocationStart) {
           holes.push([lastAllocationEnd, allocationStart - lastAllocationEnd]);
-        lastAllocationEnd = allocationStart + allocation.size;
+          lastAllocationEnd = allocationStart + allocation.size;
+        }
       }
     }
 
     const hole_data = {};
     let total_hole_size = 0;
-    for (const h in holes) {
-      const hole = holes[h];
+    const holesLength = holes.length;
+    for (let i = 0; i < holesLength; i++) {
+      const hole = holes[i];
       hole_size = hole[1];
       total_hole_size += hole_size;
       const exist = hole_data[hole_size];
@@ -225,7 +227,7 @@ class HeapView {
 
     return {
       holes: Object.values(hole_data).sort((a, b) => b.size - a.size),
-      fragmentation_percentage: (total_hole_size / lastAllocationEnd) * 100,
+      fragmentation_percentage: lastAllocationEnd === 0 ? 0 : (total_hole_size / lastAllocationEnd) * 100,
       total_hole_size: total_hole_size,
       last_allocation_top: lastAllocationEnd,
     };

@@ -107,6 +107,12 @@ uquik.get("/session/:sessionKey/:infoType", (request, response) => {
       pageTitle: "Heap Events",
       activePage: "heap-events",
       template: path.join("session", "heap", "events.pug"),
+    },
+    heap_fragmentation: {
+      title: "Heap Fragmentation",
+      pageTitle: "Heap Fragmentation",
+      activePage: "heap-fragmentation",
+      template: path.join("session", "heap", "fragmentation.pug"),
     }
   };
 
@@ -172,9 +178,10 @@ uquik.get("/api/session/:sessionKey/:method", (request, response) => {
       lifetime: he.lifetime,
       context: he.context.full_name,
       matching_event_id: he.matching_event_id
-    }))
+    })),
+    heap_fragmentation: response.locals.session.heapView.heap_fragmentation_data()
   };
-  console.log(response.locals.session.heapView.entries)
+
   const reply = data[request.locals.method];
   if (!reply) return response.status(400).json({ error: "Bad request" });
   response.json(reply);
