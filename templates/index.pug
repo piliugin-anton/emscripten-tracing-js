@@ -15,7 +15,7 @@ block body
           each session in sessions
             tr
               td.align-middle
-                a(href=`/session/${session.fileName}/overview`)= session.name
+                a(href=`/session/${session.key}/overview`)= session.name
               td.align-middle= session.name_formatted
               td.align-middle= session.application
               td.align-middle= session.username

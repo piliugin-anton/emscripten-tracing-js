@@ -31,6 +31,9 @@ uquik.use(
 uquik.get("/worker.js", static);
 uquik.head("/worker.js", static);
 
+uquik.get("/static/*", static);
+uquik.head("/static/*", static);
+
 uquik.post(
   "/trace/:version/:sessionId",
   { max_body_length: 33554432 },
@@ -55,11 +58,9 @@ uquik.use("/trace/", async (request, response, next) => {
     for (let i = 0; i < sessionDataLength; i++) {
       session.update(sessionData[i]);
     }
+    session.update_cached_data();
   }
 });
-
-uquik.get("/static/*", static);
-uquik.head("/static/*", static);
 
 uquik.get("/", (request, response) => {
   const data = {
@@ -113,8 +114,7 @@ uquik.get("/session/:sessionKey/:infoType", (request, response) => {
     pageTitle: dataInfo.pageTitle,
     activePage: dataInfo.activePage,
     pageSubTitle: `${response.locals.session.name} &mdash; ${response.locals.session.application} &mdash; ${response.locals.session.username}`,
-    session: response.locals.session,
-    fileName: request.locals.fileName,
+    session: response.locals.session
   };
 
   try {
@@ -165,7 +165,7 @@ uquik.use("/api/session/", (request, response, next) => {
 
 uquik.get("/csv/:sessionKey/:infoType", (request, response) => {
   if (request.locals.infoType === "heap_type") {
-    response.attachment(`${request.locals.fileName}_heap_type.csv`).send(Papa.unparse(response.locals.session.heapView.heap_allocation_data_by_type()));
+    response.attachment(`${request.locals.key}_heap_type.csv`).send(Papa.unparse(response.locals.session.heapView.heap_allocation_data_by_type()));
   }
 });
 uquik.use("/csv/", (request, response, next) => {

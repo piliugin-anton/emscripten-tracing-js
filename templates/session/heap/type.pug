@@ -16,7 +16,7 @@ block extrahead
 block body
   #grid-container.col-12
     #table-controls
-      a.btn.btn-primary.mb-3(href=`/csv/${fileName}/heap_type`) Download as CSV
+      a.btn.btn-primary.mb-3(href=`/csv/${session.key}/heap_type`) Download as CSV
     #heap-objects-by-type(style='height: 100%;')
     #pager(style='height: 20px;')
   script(type='text/javascript').
@@ -104,7 +104,7 @@ block body
     }
     resizeGridContainer();
     $(window).resize(resizeGridContainer);
-    $.getJSON('/api/session/#{fileName}/heap_type', function(response) {
+    $.getJSON('/api/session/#{session.key}/heap_type', function(response) {
       dataView.beginUpdate();
       dataView.setItems(response);
       dataView.endUpdate();

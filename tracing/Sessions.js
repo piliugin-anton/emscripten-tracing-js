@@ -146,7 +146,7 @@ class Sessions {
     return `${day} ${month} ${year} ${hours}:${minutes}:${seconds}`;
   }
 
-  get fileName() {
+  get key() {
     return `${this.session_id}.${this.data_version}`;
   }
 }

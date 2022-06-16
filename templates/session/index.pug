@@ -2,7 +2,7 @@ extends layout.pug
 block extrahead 
   script(type='text/javascript' src='/static/chart.js-3.8.0/chart.min.js')
 block body
-  .col-12.col-lg-6
+  .col-12(class={'col-lg-6': session.views.memory_layout.current })
     h2.sub-header Allocation Summary
     table.table
       thead.thead-dark

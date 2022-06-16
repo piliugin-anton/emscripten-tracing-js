@@ -97,7 +97,7 @@ class HeapView {
     else return 0;
   }
 
-  heap_allocation_data_by_type(format = null) {
+  heap_allocation_data_by_type() {
     const type_data = {};
     const allocation_entries = this.entries.filter(
       (e) => e.event === EVENTS.ALLOCATE
@@ -155,12 +155,7 @@ class HeapView {
       );
     }
 
-    // TODO: finish this part
-    //const types = type_data.values()
-    // Use negation to reverse the sort
-    //types.sort(lambda x,y: cmp(-x['count_all'], -y['count_all']))
-    if (format === "csv") return console.log("Write CSV");
-    return Object.values(type_data);
+    return Object.values(type_data).sort((a, b) => b.count_all - a.count_all);
   }
 
   heap_allocation_data_by_size() {
