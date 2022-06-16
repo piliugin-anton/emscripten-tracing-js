@@ -149,6 +149,20 @@ class Sessions {
   get key() {
     return `${this.session_id}.${this.data_version}`;
   }
+
+  get session_frames() {
+    return this.frames.map((frame) => ({
+      id: frame.frame_id,
+      start: frame.start,
+      end: frame.end,
+      duration: frame.duration,
+      delta_bytes: frame.delta_bytes,
+      alloc_count: frame.alloc_count,
+      alloc_bytes: frame.alloc_bytes,
+      free_count: frame.free_count,
+      free_bytes: frame.free_bytes
+    }))
+  }
 }
 
 module.exports = Sessions;

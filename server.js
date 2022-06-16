@@ -125,6 +125,12 @@ uquik.get("/session/:sessionKey/:infoType", (request, response) => {
       pageTitle: "Log Messages",
       activePage: "log-messages",
       template: path.join("session", "log_messages.pug"),
+    },
+    frames: {
+      title: "Frames",
+      pageTitle: "Frames",
+      activePage: "frames",
+      template: path.join("session", "frames.pug"),
     }
   };
 
@@ -139,6 +145,7 @@ uquik.get("/session/:sessionKey/:infoType", (request, response) => {
       })
     );
 
+    console.log(response.locals.session.frames)
   const data = {
     title: dataInfo.title,
     pageTitle: dataInfo.pageTitle,

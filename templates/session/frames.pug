@@ -1,0 +1,144 @@
+extends layout.pug
+block body
+  #grid-container.col-12
+    #time-slider.pipped-slider.col-12.offset-md-1.col-md-10
+    #frames(style='height: 100%;')
+    #pager(style='height:20px;')
+  script(type='text/javascript').
+    function PosNegFormatter(row, cell, value, columnDef, dataContext) {
+      if (value > 0) {
+        return "<span class='text-danger'>" + value.toString() + "</span>";
+      } else if (value < 0) {
+        return "<span class='text-success'>" + value.toString() + "</span>";
+      } else {
+        return "";
+      }
+    }
+    function NonZeroFormatter(row, cell, value, columnDef, dataContext) {
+      return value ? value.toString() : '';
+    }
+    function MillisecondFormatter(row, cell, value, columnDef, dataContext) {
+      return value.toFixed(3).toString() + ' ms'
+    }
+    var columns = [
+      {id: 'id', name: 'ID', field: 'id',
+      sortable: true,
+      cssClass: 'text-center'},
+      {id: 'start', name: 'Start', field: 'start',
+      sortable: true,
+      width: 120,
+      formatter: MillisecondFormatter,
+      cssClass: 'text-right'},
+      {id: 'duration', name: 'Duration', field: 'duration',
+      sortable: true,
+      width: 120,
+      formatter: MillisecondFormatter,
+      cssClass: 'text-right'},
+      {id: 'delta_bytes', name: '&plusmn; Bytes', field: 'delta_bytes',
+      sortable: true,
+      formatter: PosNegFormatter,
+      cssClass: 'text-right'},
+      {id: 'alloc_count', name: 'Alloc #', field: 'alloc_count',
+      sortable: true,
+      formatter: NonZeroFormatter,
+      cssClass: 'text-right'},
+      {id: 'alloc_bytes', name: 'Alloc Bytes', field: 'alloc_bytes',
+      minWidth: 120,
+      sortable: true,
+      formatter: NonZeroFormatter,
+      cssClass: 'text-right'},
+      {id: 'free_count', name: 'Free #', field: 'free_count',
+      sortable: true,
+      formatter: NonZeroFormatter,
+      cssClass: 'text-right'},
+      {id: 'free_bytes', name: 'Free Bytes', field: 'free_bytes',
+      minWidth: 120,
+      sortable: true,
+      formatter: NonZeroFormatter,
+      cssClass: 'text-right'},
+    ];
+    var options = {
+      enableCellNavigation: true,
+      enableColumnReorder: false
+    };
+    var data = !{JSON.stringify(session.session_frames)};
+    var sliderTicks = 50;
+    var minimumStart = 0;
+    var maximumStart = 0;
+    if (data.length > 0) {
+      maximumStart = data[data.length - 1]['start'].toFixed(0);
+    }
+    maximumStart = Math.ceil(maximumStart / sliderTicks) * sliderTicks;
+    var dataView = new Slick.Data.DataView({ inlineFilters: true });
+    var grid = new Slick.Grid("#frames", dataView, columns, options);
+    grid.setSelectionModel(new Slick.RowSelectionModel());
+    var pager = new Slick.Controls.Pager(dataView, grid, $("#pager"));
+    grid.onSort.subscribe(function(e, args) {
+      var comparer = function(a, b) {
+        return (a[args.sortCol.field] > b[args.sortCol.field]) ? 1 : -1;
+      }
+      dataView.sort(comparer, args.sortAsc);
+    });
+    dataView.onRowCountChanged.subscribe(function (e, args) {
+      grid.updateRowCount();
+      grid.render();
+    });
+    dataView.onRowsChanged.subscribe(function (e, args) {
+      grid.invalidateRows(args.rows);
+      grid.render();
+    });
+    function framesFilter(item, args) {
+      if (item['start'] < args.minimumStart) {
+        return false;
+      }
+      if (item['start'] > args.maximumStart) {
+        return false;
+      }
+      return true;
+    }
+    dataView.beginUpdate();
+    dataView.setItems(data);
+    dataView.setFilterArgs({
+      minimumStart: minimumStart,
+      maximumStart: maximumStart,
+    });
+    dataView.setFilter(framesFilter);
+    dataView.endUpdate();
+    function updateFilter() {
+      var values = $("#time-slider").slider("values");
+      dataView.setFilterArgs({
+        minimumStart: values[0],
+        maximumStart: values[1]
+      });
+      dataView.refresh();
+    }
+    $("#time-slider").slider({
+      animate: false,
+      range: true,
+      min: minimumStart,
+      max: maximumStart,
+      values: [minimumStart, maximumStart],
+      slide: function(event, ui) {
+        updateFilter();
+      },
+      change: function(event, ui) {
+        updateFilter();
+      }
+    }).slider("pips", {
+      rest: "pip",
+      step: (maximumStart - minimumStart) / sliderTicks,
+      suffix: 'ms'
+    }).slider("float", {
+      suffix: 'ms'
+    });
+    function resizeGridContainer() {
+      $("#grid-container").height(
+        $(window).height() -
+        $("#time-slider").outerHeight(true) -
+        $("#navbar").outerHeight() -
+        $("#page-header").outerHeight() - 105
+      );
+      grid.resizeCanvas();
+    }
+    resizeGridContainer();
+    $(window).resize(resizeGridContainer);
