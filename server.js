@@ -131,6 +131,12 @@ uquik.get("/session/:sessionKey/:infoType", (request, response) => {
       pageTitle: "Frames",
       activePage: "frames",
       template: path.join("session", "frames.pug"),
+    },
+    errors: {
+      title: "Errors",
+      pageTitle: "Errors",
+      activePage: "errors",
+      template: path.join("session", "errors.pug"),
     }
   };
 

@@ -1,0 +1,19 @@
+extends layout.pug
+block body
+  .col-12
+    if session && session.errors.length
+      .table-responsive
+        table.table.table-hover
+          thead
+            th.text-nowrap Timestamp
+            th.text-nowrap Error Message
+            th.text-nowrap Callstack
+          tbody
+            each error in session.errors
+              tr
+                td.align-middle= error.timestamp
+                td.align-middle= error.error
+                td.align-middle
+                  pre= error.callstack
+    else
+      p No errors found
