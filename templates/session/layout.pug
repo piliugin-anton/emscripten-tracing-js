@@ -1,4 +1,20 @@
 extends ../layout.pug
+block extrahead 
+  link(href='/static/slickgrid/slick.grid.css' rel='stylesheet')
+  link(href='/static/slickgrid/slick-default-theme.css' rel='stylesheet')
+  link(href='/static/slickgrid/controls/slick.pager.css' rel='stylesheet')
+  link(href='/static/jquery-ui-1.13.1/jquery-ui.min.css' rel='stylesheet')
+  link(href='/static/jquery-ui-1.13.1/jquery-ui.theme.min.css' rel='stylesheet')
+  link(href='/static/jquery-ui-plugins/jquery-ui-slider-pips.min.css' rel='stylesheet')
+  script(type='text/javascript' src='/static/jquery-ui-1.13.1/jquery-ui.min.js')
+  script(type='text/javascript' src='/static/slickgrid/lib/jquery.event.drag-2.3.0.js')
+  script(type='text/javascript' src='/static/slickgrid/slick.core.js')
+  script(type='text/javascript' src='/static/slickgrid/slick.grid.js')
+  script(type='text/javascript' src='/static/slickgrid/slick.dataview.js')
+  script(type='text/javascript' src='/static/slickgrid/controls/slick.pager.js')
+  script(type='text/javascript' src='/static/slickgrid/plugins/slick.rowmovemanager.js')
+  script(type='text/javascript' src='/static/slickgrid/plugins/slick.rowselectionmodel.js')
+  script(src='/static/jquery-ui-plugins/jquery-ui-slider-pips.min.js')
 block navbar
   ul.list-group
     -
@@ -7,8 +23,8 @@ block navbar
         { link: `/session/${sessionFile}/overview`, id: 'index', text: 'Overview' },
         { link: `/session/${sessionFile}/heap_type`, id: 'heap-type', text: 'Heap Objects by Type' },
         { link: `/session/${sessionFile}/heap_size`, id: 'heap-size', text: 'Heap Objects by Size' },
-        { link: `/session/${sessionFile}/events`, id: 'heap-events', text: 'Heap Events' },
-        { link: `/session/${sessionFile}/fragmentation`, id: 'heap-fragmentation', text: 'Heap Fragmentation'},
+        { link: `/session/${sessionFile}/heap_events`, id: 'heap-events', text: 'Heap Events' },
+        { link: `/session/${sessionFile}/heap_fragmentation`, id: 'heap-fragmentation', text: 'Heap Fragmentation'},
         { link: `/session/${sessionFile}/execution`, id: 'execution-contexts', text: 'Execution Contexts' },
         { link: `/session/${sessionFile}/log_messages`, id: 'log-messages', text: 'Log Messages' },
         { link: `/session/${sessionFile}/frames`, id: 'frames', text: 'Frames' },

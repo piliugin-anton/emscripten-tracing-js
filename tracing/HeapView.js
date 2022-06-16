@@ -26,7 +26,7 @@ class HeapView {
 
       const he = new HeapEntry(
         this.next_event_id(),
-        session.FRAME_ID,
+        session.frame_id,
         EVENTS.ALLOCATE,
         entry[1],
         address,
@@ -45,7 +45,7 @@ class HeapView {
 
       const freeEntry = new HeapEntry(
         this.next_event_id(),
-        session.FRAME_ID,
+        session.frame_id,
         EVENTS.FREE,
         timestamp,
         address,

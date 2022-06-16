@@ -99,6 +99,12 @@ html, body {
   margin-bottom: 4em !important;
 }
 
+.pipped-slider .ui-slider-tip {
+  width: auto !important;
+  padding-left: 4px !important;
+  padding-right: 4px !important;
+}
+
 .pipped-slider .ui-slider-pip {
     width: 1%;
     margin-left: -0.5%;
@@ -135,6 +141,10 @@ html, body {
     top: 12px;
     color: #333;
     font-size: 1em;
+}
+
+.form-group label {
+  font-weight: bold;
 }
 
 /* For tree views */
