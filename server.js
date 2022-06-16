@@ -3,52 +3,14 @@ const path = require("path");
 const { Server, StaticFiles, CORS, CustomError } = require("uquik");
 const pug = require("pug");
 const Papa = require("papaparse");
-const SessionReader = require("./tracing/SessionReader");
+const Sessions = require("./tracing/Sessions");
 
 const port = 5000;
 const host = "127.0.0.1";
 
-const dataDir = path.join(__dirname, "data");
+const sessions = new Map();
+
 const templatesDir = path.join(__dirname, "templates");
-
-const getSessionFiles = (dir) => {
-  return new Promise((resolve, reject) => {
-    const emscriptenFiles = [];
-    fs.readdir(dir, { withFileTypes: true }, (err, files) => {
-      if (err) reject(err);
-      else {
-        files.forEach((file, index) => {
-          if (file.isFile() && file.name.endsWith(".emscripten")) {
-            const fileName = path.join(dir, file.name);
-            if (/([0-9]+_[0-9]+)\.([0-9]+)/.test(fileName))
-              emscriptenFiles.push(fileName);
-          }
-        });
-        resolve(emscriptenFiles);
-      }
-    });
-  });
-};
-
-const cleanup = (dir) => {
-  getSessionFiles(dir)
-    .then((files) =>
-      files.forEach((file) => {
-        fs.unlink(file, (err) => {
-          const fileName = path.basename(file);
-          if (err) console.log(`Can't delete ${fileName}`);
-          else {
-            console.log(`File ${fileName} deleted successfully!`);
-          }
-        });
-      })
-    )
-    .catch((error) =>
-      console.log("Error while reading session files list", error)
-    );
-};
-
-process.on("SIGINT", () => cleanup(dataDir));
 
 const uquik = new Server();
 
@@ -61,8 +23,7 @@ uquik.use(
     methods: ["GET", "HEAD", "POST"],
     allowedHeaders: [
       "content-type",
-      "emscripten-tracing-js",
-      "emscripten-data-length",
+      "emscripten-tracing-js"
     ],
   })
 );
@@ -71,39 +32,36 @@ uquik.get("/worker.js", static);
 uquik.head("/worker.js", static);
 
 uquik.post(
-  "/trace/:version/:session",
+  "/trace/:version/:sessionId",
   { max_body_length: 33554432 },
   (request, response) =>
     response.json({
-      length: Number(request.headers.get("emscripten-data-length")),
+      length: request.locals.dataLength || 0,
     })
 );
-uquik.use("/trace/", (request, response, next) => {
-  const contentType = request.headers.get("content-type");
-  const isEmscripten = request.headers.get("emscripten-tracing-js");
-  if (!isEmscripten || contentType !== "text/emscripten-data")
+uquik.use("/trace/", async (request, response, next) => {
+  if (!request.headers.has("emscripten-tracing-js"))
     return next(new CustomError("Incorrect input data", 400));
 
   const version = request.path_parameters.get("version");
-  const session = request.path_parameters.get("session");
-  const fileName = `${session}.${version}.emscripten`;
-  const writeStream = fs.createWriteStream(path.join(dataDir, fileName), {
-    flags: "a",
-  });
-  writeStream.once("error", (err) => response.throw(err));
-
-  request.once("end", () => {
-    writeStream.write("\r\n");
-    if (!writeStream.destroyed) writeStream.destroy();
-    next();
-  });
-  request.pipe(writeStream);
+  const sessionId = request.path_parameters.get("sessionId");
+  const key = `${sessionId}.${version}`;
+  const session = sessions.has(key) ? sessions.get(key) : sessions.set(key, new Sessions(sessionId)).get(key);
+  if (!session.data_version) session.data_version = version;
+  const sessionData = await request.json();
+  if (Array.isArray(sessionData)) {
+    const sessionDataLength = sessionData.length;
+    request.locals.dataLength = sessionDataLength;
+    for (let i = 0; i < sessionDataLength; i++) {
+      session.update(sessionData[i]);
+    }
+  }
 });
 
 uquik.get("/static/*", static);
 uquik.head("/static/*", static);
 
-uquik.get("/", async (request, response) => {
+uquik.get("/", (request, response) => {
   const data = {
     title: "Sessions",
     pageTitle: "Sessions",
@@ -117,23 +75,13 @@ uquik.get("/", async (request, response) => {
     response.throw(ex);
   }
 });
-uquik.use("/", async (request, response, next) => {
-  try {
-    const sessionFiles = await getSessionFiles(dataDir);
-    const sessionsLength = sessionFiles.length;
-    const sessions = [];
-    for (let i = 0; i < sessionsLength; i++) {
-      const sessionReader = new SessionReader(sessionFiles[i]);
-      sessionReader.read();
-      if (sessionReader.session) sessions.push(sessionReader.session);
-    }
-    response.locals.sessions = sessions;
-  } catch (ex) {
-    return ex;
-  }
+uquik.use("/", (request, response, next) => {
+  response.locals.sessions = [];
+  sessions.forEach((session) => response.locals.sessions.push(session));
+  next();
 });
 
-uquik.get("/session/:fileName/:infoType", (request, response) => {
+uquik.get("/session/:sessionKey/:infoType", (request, response) => {
   const info = {
     overview: {
       title: "Overview",
@@ -152,7 +100,7 @@ uquik.get("/session/:fileName/:infoType", (request, response) => {
   const dataInfo = info[request.locals.infoType];
 
   if (!dataInfo)
-    return response.html(
+    return response.status(404).html(
       pug.renderFile(path.join(templatesDir, "error.pug"), {
         title: "Error",
         pageTitle: "Error",
@@ -181,12 +129,10 @@ uquik.get("/session/:fileName/:infoType", (request, response) => {
 });
 uquik.use("/session/", (request, response, next) => {
   request.locals.infoType = request.path_parameters.get("infoType");
-  request.locals.fileName = request.path_parameters.get("fileName");
-  const fileName = `${request.locals.fileName}.emscripten`;
-  const sessionReader = new SessionReader(path.join(dataDir, fileName));
-  sessionReader.read();
+  request.locals.key = request.path_parameters.get("sessionKey");
+  response.locals.session = sessions.get(request.locals.key);
 
-  if (!sessionReader.session)
+  if (!response.locals.session)
     return response.status(404).html(
       pug.renderFile(path.join(templatesDir, "error.pug"), {
         title: "Error",
@@ -195,51 +141,40 @@ uquik.use("/session/", (request, response, next) => {
       })
     );
 
-  response.locals.session = sessionReader.session;
-
   next();
 });
 
-uquik.get("/api/session/:fileName/:method", (request, response) => {
+uquik.get("/api/session/:sessionKey/:method", (request, response) => {
   const data = {
     heap_type: response.locals.session.heapView.heap_allocation_data_by_type(),
   };
   const reply = data[request.locals.method];
   if (!reply) return response.status(400).json({ error: "Bad request" });
-  console.log(reply);
   response.json(reply);
 });
 uquik.use("/api/session/", (request, response, next) => {
-  request.locals.fileName = request.path_parameters.get("fileName");
+  request.locals.key = request.path_parameters.get("sessionKey");
   request.locals.method = request.path_parameters.get("method");
-  const fileName = `${request.locals.fileName}.emscripten`;
-  const sessionReader = new SessionReader(path.join(dataDir, fileName));
-  sessionReader.read();
+  response.locals.session = sessions.get(request.locals.key);
 
-  if (!sessionReader.session)
+  if (!response.locals.session)
     return response.status(404).json({ error: "Can't load session" });
-
-  response.locals.session = sessionReader.session;
 
   next();
 });
 
-uquik.get("/csv/:fileName/:infoType", (request, response) => {
+uquik.get("/csv/:sessionKey/:infoType", (request, response) => {
   if (request.locals.infoType === "heap_type") {
     response.attachment(`${request.locals.fileName}_heap_type.csv`).send(Papa.unparse(response.locals.session.heapView.heap_allocation_data_by_type()));
   }
 });
 uquik.use("/csv/", (request, response, next) => {
-  request.locals.fileName = request.path_parameters.get("fileName");
+  request.locals.key = request.path_parameters.get("sessionKey");
   request.locals.infoType = request.path_parameters.get("infoType");
-  const fileName = `${request.locals.fileName}.emscripten`;
-  const sessionReader = new SessionReader(path.join(dataDir, fileName));
-  sessionReader.read();
+  response.locals.session = sessions.get(request.locals.key);
 
-  if (!sessionReader.session)
+  if (!response.locals.session)
     return response.status(404).json({ error: "Can't load session" });
-
-  response.locals.session = sessionReader.session;
 
   next();
 });

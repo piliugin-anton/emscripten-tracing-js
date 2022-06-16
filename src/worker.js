@@ -40,19 +40,8 @@ class Tracing {
   }
 
   send(message) {
-    this.queue.push(JSON.stringify(message));
+    this.queue.push(message);
     this._scheduleSend();
-  }
-
-  _arrayJoin(array, separator) {
-    let string = "";
-    const arrayLength = array.length;
-    for (let i = 0; i < arrayLength; i++) {
-      const added = i === arrayLength - 1 ? array[i] : array[i] + separator;
-      string += added;
-    }
-
-    return string;
   }
 
   _scheduleSend(timeout) {
@@ -66,16 +55,10 @@ class Tracing {
   _sendQueue() {
     if (this.queue.length === 0 || !this.session || !this.version) return;
 
-    this.client.post(
-      `/trace/${this.version}/${this.session}`,
-      this._arrayJoin(this.queue, "\n"),
-      {
-        headers: {
-          "Emscripten-Data-Length": this.queue.length
-        }
-      }
-    ).then(({data}) => data.length && this.queue.splice(0, data.length))
-    .catch((error) => this._scheduleSend(100));
+    this.client
+      .post(`/trace/${this.version}/${this.session}`, this.queue)
+      .then(({ data }) => data.length && this.queue.splice(0, data.length))
+      .catch((error) => this._scheduleSend(100));
   }
 }
 
