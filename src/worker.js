@@ -20,7 +20,6 @@ class Tracing {
       timeout: 3000,
       headers: {
         "Emscripten-Tracing-JS": this.version,
-        "Content-Type": "text/emscripten-data",
       },
     });
   }

@@ -151,7 +151,6 @@ uquik.get("/session/:sessionKey/:infoType", (request, response) => {
       })
     );
 
-    console.log(response.locals.session.frames)
   const data = {
     title: dataInfo.title,
     pageTitle: dataInfo.pageTitle,
@@ -167,7 +166,7 @@ uquik.get("/session/:sessionKey/:infoType", (request, response) => {
     );
     response.html(rendered);
   } catch (ex) {
-    console.log(ex)
+    console.log(ex);
     response.throw(ex);
   }
 });
