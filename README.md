@@ -3,9 +3,19 @@ Emscripten Tracing JavaScript
 
 A JavaScript version of https://github.com/waywardmonkeys/emscripten-trace-collector
 
-Features:
-- Bundling of CSS and JavaScript
-- WebSockets for worker
+#### Requirements:
+- Node.js v14.15.0 or higher
 
-Requirements:
-- Node v14.15.0
+## Usage:
+
+#### Installation:
+`npm install`
+
+#### Running a server:
+`npm run start`
+
+#### Development(if you plan to create a PR or working on fork):
+`npm run dev`
+
+## License
+[MIT](./LICENSE)
