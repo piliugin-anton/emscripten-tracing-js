@@ -14,7 +14,7 @@ A JavaScript version of https://github.com/waywardmonkeys/emscripten-trace-colle
 #### Running a server:
 `npm run start`
 
-#### Development(if you plan to create a PR or working on fork):
+#### Development (if you plan to create a PR or working on fork):
 `npm run dev`
 
 ## License
