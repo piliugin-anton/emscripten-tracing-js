@@ -129,6 +129,11 @@ class Sessions {
     }
   }
 
+  _addZero(n) {
+    if (n < 10) return `0${n}`;
+    return n;
+  }
+
   get peak_allocated_formatted() {
     return formatBytes(this.peak_allocated);
   }
@@ -139,10 +144,9 @@ class Sessions {
     const year = date.getFullYear();
     const month = months[date.getMonth()];
     const day = date.getDate();
-    // TODO: add zero to h,m,s
-    const hours = date.getHours();
-    const minutes = date.getMinutes();
-    const seconds = date.getSeconds();
+    const hours = this._addZero(date.getHours());
+    const minutes = this._addZero(date.getMinutes());
+    const seconds = this._addZero(date.getSeconds());
     return `${day} ${month} ${year} ${hours}:${minutes}:${seconds}`;
   }
 
